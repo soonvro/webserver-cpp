@@ -35,10 +35,21 @@ class HttpRequest{
     }
     
   public:
-    static bool s_on_message_begin(HttpDecoder* hd){
+    static bool sOnMessageBegin(HttpDecoder* hd){
       HttpRequest* pthis = static_cast<HttpRequest*>(hd->_data);
       return pthis->on_message_begin(hd);
     }
+    
+    const enum HttpDecoderMethod&                           getMethod(void) const;
+    const std::string&                                      getHost(void) const;
+    const unsigned short&                                   getPort(void) const;
+    const std::string&                                      getLocation(void) const;
+    const std::vector<std::pair<std::string, std::string>>& getQueries() const;
+    const unsigned short&                                   getHttpMajor(void) const;
+    const unsigned short&                                   getHttpMinor(void) const;
 
+    const std::map<std::string, std::string>&               getHeaders(void) const;
+    const unsigned long long&                               getContentLength(void) const;
+    const bool&                                             getIsChunked(void) const;
 };
 #endif
