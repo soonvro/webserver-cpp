@@ -4,6 +4,7 @@ Server::Server(int port) : _port(port), _socket(0), _kq(0) {}
 Server::~Server() {} 
 
 Server::Server(const Server& origin) { *this = origin; }
+
 Server&	Server::operator=(const Server& origin) {
 	if (this != &origin) {
 		_port = origin.getPort();
@@ -27,6 +28,15 @@ void	Server::disconnect_client(int client_fd) {
 	_clients.erase(client_fd);
 }
 
+void	sendHttpResponse(int client_fd){
+	client_fd++;
+}
+
+void	recvHttpRequest(int client_fd){
+	client_fd++;
+}
+
+
 void	Server::init(void) {
 	_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (_socket == -1) throw std::runtime_error("Error: socket failed.");
@@ -43,13 +53,12 @@ void	Server::run(void) {
 	if (bind(_socket, (struct sockaddr*)&_server_addr, sizeof(_server_addr)) == -1) throw std::runtime_error("Error: bind failed.");
 	if (listen(_socket, 5) == -1) throw std::runtime_error("Error: listen fail.");
 	fcntl(_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
-	
-	struct kevent	event_list[8];
-
 	change_events(_change_list, _socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+	
 	std::cout << "Server started." << std::endl;
 
 	int	new_event;
+	struct kevent	event_list[8];
 	struct kevent*	curr_event;
 	while (1) {
 		new_event = kevent(_kq, &_change_list[0], _change_list.size(), event_list, 8, NULL);
@@ -67,42 +76,25 @@ void	Server::run(void) {
 					disconnect_client(curr_event->ident);
 				}
 			} else if (curr_event->filter == EVFILT_READ) {
-				if (curr_event->ident == static_cast<uintptr_t>(_socket)) {
+				if (curr_event->ident == static_cast<uintptr_t>(_socket)) {//socket read event
 					int	client_socket;
 
 					if ((client_socket = accept(_socket, NULL, NULL)) == -1) throw std::runtime_error("Error: accept fail");
+					
 					std::cout << "accept new client: " << client_socket << std::endl;
-					fcntl(client_socket, F_SETFL, O_NONBLOCK);
-
 					change_events(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-					change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
+					change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE, 0, 0, NULL);
 					_clients[client_socket] = "";
-				} else if (_clients.find(curr_event->ident) != _clients.end()) {
-					char	buf[1024];
-					int		n = read(curr_event->ident, buf, sizeof(buf));
-
-					if (n <= 0) {
-						if (n < 0) std::cerr << "Error: Client read error." << std::endl;
-						disconnect_client(curr_event->ident);
-					} else {
-						buf[n] = '\0';
-						_clients[curr_event->ident] += buf;
-						std::cout << "received data from " << curr_event->ident << ": " << _clients[curr_event->ident] << std::endl;
-					}
-				}
-			} else if (curr_event->filter == EVFILT_WRITE) {
-				std::map<int, std::string>::iterator	it = _clients.find(curr_event->ident);
-				if (it != _clients.end()) {
-					if (_clients[curr_event->ident] != "") {
-						int	n;
-
-						if ((n = write(curr_event->ident, _clients[curr_event->ident].c_str(), _clients[curr_event->ident].size()) == -1)) {
-							std::cerr << "Error: Client write error." << std::endl;
-							disconnect_client(curr_event->ident);
-						} else _clients[curr_event->ident].clear();
-					}
-				}
-			}
+				} else if (_clients.find(curr_event->ident) != _clients.end()) {//client read event
+					recvHttpRequest(curr_event->ident);
+				} 
+			} else if (curr_event->filter == EVFILT_WRITE) { //client write event
+				sendHttpResponse(curr_event->ident);
+			} 
+			//else if (curr_event->filter == EV_EOF) { //cgi write pipe eof
+			//	make response
+			//	enable client write socket filter
+			//} 
 		}
 	}
 }

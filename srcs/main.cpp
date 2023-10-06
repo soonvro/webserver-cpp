@@ -5,8 +5,10 @@ int main(int argc, char** argv) {
     std::cout << "need argument" << std::endl;
     return 1;
   }
-  Server  server(atoi(argv[1]));
 
+  //configure file 읽고 server init 방식으로 나중에 수정하기
+  Server  server(atoi(argv[1]));
+  
   server.init();
   server.run();
 
