@@ -11,9 +11,6 @@ class Client {
     std::vector<HttpResponse> _ress;
 
   public:
-    Client();
-    ~Client();
-
     const std::string&                getBuf(void) const;
     const std::vector<HttpRequest>&   getReqs(void) const;
     const std::vector<HttpResponse>&  getRess(void) const;

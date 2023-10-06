@@ -18,7 +18,7 @@ class HttpRequest{
     std::string            _host;
     unsigned short         _port;
     std::string            _location;
-    std::vector<std::pair<std::string, std::string>> _queries;
+    std::vector<std::pair<std::string, std::string> > _queries;
     unsigned short         _http_major;
     unsigned short         _http_minor;
 
@@ -30,21 +30,22 @@ class HttpRequest{
     //entity
     std::string _entity;
     
-    bool on_message_begin(HttpDecoder* hd) {
-      
-    }
+    // bool on_message_begin(HttpDecoder* hd) {
+    //   return 0; 
+    // }
     
   public:
-    static bool sOnMessageBegin(HttpDecoder* hd){
-      HttpRequest* pthis = static_cast<HttpRequest*>(hd->_data);
-      return pthis->on_message_begin(hd);
-    }
+    // static bool sOnMessageBegin(HttpDecoder* hd){
+    //   HttpRequest* pthis = static_cast<HttpRequest*>(hd->_data);
+    //   hd = 0;
+    //   return pthis->on_message_begin(hd);
+    // }
     
     const enum HttpDecoderMethod&                           getMethod(void) const;
     const std::string&                                      getHost(void) const;
     const unsigned short&                                   getPort(void) const;
     const std::string&                                      getLocation(void) const;
-    const std::vector<std::pair<std::string, std::string>>& getQueries() const;
+    const std::vector<std::pair<std::string, std::string> >& getQueries() const;
     const unsigned short&                                   getHttpMajor(void) const;
     const unsigned short&                                   getHttpMinor(void) const;
 
