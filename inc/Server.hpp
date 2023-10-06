@@ -12,6 +12,7 @@
 #include <vector>
 #include <exception>
 #include <stdexcept>
+#include "Client.hpp"
 
 class Server {
   private:
@@ -20,7 +21,7 @@ class Server {
   int       _kq;
 
   struct sockaddr_in    _server_addr;
-  std::map<int, std::string>  _clients;
+  std::map<int, Client>  _clients;
   std::vector<struct kevent>  _change_list;
 
   Server(const Server& origin);

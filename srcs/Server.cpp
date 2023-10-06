@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "Client.hpp"
 
 Server::Server(int port) : _port(port), _socket(0), _kq(0) {}
 Server::~Server() {} 
@@ -40,7 +41,7 @@ void	recvHttpRequest(int client_fd){
 void	Server::init(void) {
 	_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (_socket == -1) throw std::runtime_error("Error: socket failed.");
-
+	
 	_server_addr.sin_family = AF_INET;
 	_server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	_server_addr.sin_port = htons(_port);
@@ -84,7 +85,7 @@ void	Server::run(void) {
 					std::cout << "accept new client: " << client_socket << std::endl;
 					change_events(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 					change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE, 0, 0, NULL);
-					_clients[client_socket] = "";
+					_clients[client_socket] = Client();
 				} else if (_clients.find(curr_event->ident) != _clients.end()) {//client read event
 					recvHttpRequest(curr_event->ident);
 				} 
