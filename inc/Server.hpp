@@ -23,12 +23,6 @@
 #include "Client.hpp"
 #include "Host.hpp"
 
-/*
-  _hosts
-    socket fd, host name으로 구별
-  _clients
-    socket fd로 구별
-*/
 class Server {
   private:
   Host _default_host; 
@@ -39,6 +33,7 @@ class Server {
   std::vector<struct kevent>  _change_list;
 
   std::map<int, Client>  _clients;
+  std::map<int, std::string>  _cgi;//value 바꿔야함. 
 
   void  change_events(std::vector<struct kevent>& change_list, uintptr_t ident, \
       int16_t filter, uint16_t flags, uint32_t fflags, intptr_t data, void *udata);
@@ -46,13 +41,13 @@ class Server {
   void  handle_error_kevent(int ident);
   void  disconnect_client(const int client_fd);
   
-  void Server::connectClient(int server_socket);
+  void  connectClient(int server_socket);
 
-  void	Server::sendHttpResponse(int client_fd);
+  void	sendHttpResponse(int client_fd);
   
-  void	Server::recvHttpRequest(int client_fd);
+  void	recvHttpRequest(int client_fd);
   
-  void	Server::recvCgiRequest(int cgi_fd);
+  void	recvCgiResponse(int cgi_fd);
 
 
   public:

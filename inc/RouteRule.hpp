@@ -1,23 +1,36 @@
-#ifndef HOST_H_
-#define HOST_H_
+#ifndef ROUTERULE_H
+#define ROUTERULE_H
 
 #include <string>
 #include <utility>
 
-class RouteRule{
-  private:
-  std::string _route;
-  std::string _location;
+class RouteRule {
+private:
+    std::string _route;
+    std::string _location;
+    int _accepted_methods;
+    std::pair<int, std::string> _redirection;
+    bool _directory_listing;
+    std::string _default_response_for_directory;
 
-  int _accepted_methods;
+public:
+    const std::string& getRoute() const;
+    void setRoute(const std::string& route);
 
-  std::pair<int, std::string>  _redirection;
+    const std::string& getLocation() const;
+    void setLocation(const std::string& location);
 
-  bool  _directory_listing;
+    int getAcceptedMethods() const;
+    void setAcceptedMethods(int methods);
 
-  std::string _default_response_for_directory;
+    const std::pair<int, std::string>& getRedirection() const;
+    void setRedirection(const std::pair<int, std::string>& redirection);
 
-  //CGI
-}
+    bool isDirectoryListingEnabled() const;
+    void setDirectoryListing(bool enable);
 
-#endif
+    const std::string& getDefaultResponseForDirectory() const;
+    void setDefaultResponseForDirectory(const std::string& response);
+};
+
+#endif // ROUTERULE_H

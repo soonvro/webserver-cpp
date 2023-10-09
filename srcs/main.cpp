@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
   }
 
   //configure file 읽고 server init 방식으로 나중에 수정하기
-  Server  server(atoi(argv[1]));
+  Server  server(argv[1]);
   
   server.init();
   server.run();
