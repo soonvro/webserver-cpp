@@ -6,7 +6,7 @@ CXXFLAGS	=	-Wall -Wextra -Werror -std=c++98 -MMD
 SRCDIR		=	./srcs
 INCDIR		=	./inc
 
-SRCS			=	$(SRCDIR)/main.cpp  $(SRCDIR)/Server.cpp
+SRCS = $(wildcard $(SRCDIR)/*.cpp)
 
 OBJS			=	$(SRCS:.cpp=.o)
 DEPS 			:= $(SRCS:.cpp=.d)
