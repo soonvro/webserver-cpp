@@ -10,10 +10,10 @@
 class HttpRequest{
   private:
     //client request
-    char* _buf;
+    // char* _buf;
 
     //start line
-    enum HttpDecoderMethod _method;
+    enum HPS::Method _method;
   
     std::string            _host;
     unsigned short         _port;
@@ -32,7 +32,7 @@ class HttpRequest{
     
   public:
     
-    const enum HttpDecoderMethod&                             getMethod(void) const;
+    const enum HPS::Method&                             getMethod(void) const;
     const std::string&                                        getHost(void) const;
     const unsigned short&                                     getPort(void) const;
     const std::string&                                        getLocation(void) const;
