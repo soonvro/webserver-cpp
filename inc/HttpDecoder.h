@@ -50,7 +50,7 @@ class HttpDecoder {
   unsigned int _n_read; // The char bytes within the buf that has been read.
 
   enum HPS::DecoderState       _state;
-  enum HPS::DecoderHeaderState _header_state;
+  // enum HPS::DecoderHeaderState _header_state; //메이크용으로 주석 처리했어요. -werror 에 걸려서요.
   HttpDecoderCallback _cb;
 };
 
