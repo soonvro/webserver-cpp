@@ -71,20 +71,42 @@ void	Server::sendHttpResponse(int client_fd){
 		write(client_fd, buf, strlen(buf));
 		buf = responses[i].getBody();
 		write(client_fd, buf, responses[i].getBodySize());
+		std::cout << "send" << std::endl;
+		delete[] buf;
 	}
 	client.clearRess();
 	if (client.getHasEof()){
+		std::cout << "send eof" << std::endl;
 		disconnect_client(client_fd);
 	} else {
+		std::cout << "send alive" << std::endl;
 		change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
 	}
 }
 
 void	Server::recvHttpRequest(int client_fd){
 	char b[1000] = {0,};
-	int a = read(client_fd, b, 10);
-	write(client_fd, b, a);
-	std::cout << "write" << std::endl;
+	int a = read(client_fd, b, 1000);
+	std::cout << "read: " << a << std::endl;
+
+
+	Client& client = _clients[client_fd];
+	HttpResponse res;
+	res.setHttpMajor(1);
+	res.setHttpMinor(1);
+	res.setStatus(200);
+	res.setStatusMessage("OK");
+	std::map<std::string, std::string> headers;
+	headers["Content-Type"] = "text/html";
+	int fd = open("index.html", O_RDONLY);
+	char *buf = new char[1000];
+	int size = read(fd, buf, 1000);
+	headers["Content-Length"] = std::to_string(size);
+	res.setHeaders(headers);
+	res.setBody(buf);
+	res.setBodySize(size);
+	client.addRess(res);
+	change_events(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void	Server::recvCgiResponse(int cgi_fd){
@@ -111,6 +133,8 @@ void	Server::init(void) {
 		sock_addr.sin_family = AF_INET;
 		sock_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 		sock_addr.sin_port = htons(h.getPort());
+		int option = 1;
+		setsockopt( socket_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) );
 		if (bind(socket_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) == -1) throw std::runtime_error("Error: bind failed.");
 		if (listen(socket_fd, 512) == -1) throw std::runtime_error("Error: listen fail.");
 		change_events(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
