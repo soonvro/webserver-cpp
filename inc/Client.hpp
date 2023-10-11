@@ -27,6 +27,7 @@ class Client {
     void                              addReqs(HttpRequest& req);
     void                              addRess(HttpResponse& res);
 
+    void                              clearRess(void);
     void                              setHasEof(bool has_eof);
 };
 
