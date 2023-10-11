@@ -17,3 +17,5 @@ void  Client::addBuf(const char* buf, size_t size) {
 void  Client::addReqs(HttpRequest& req) { _reqs.push_back(req); }
 
 void  Client::addRess(HttpResponse& res) { _ress.push_back(res); }
+
+void  Client::clearRess(void) {_ress.clear(); }

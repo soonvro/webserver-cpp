@@ -29,6 +29,10 @@ const bool& HttpResponse::getIsChunked() const {
     return _is_chunked;
 }
 
+const char* HttpResponse::getBody() const {
+    return _body;
+}
+
 // Setters
 void HttpResponse::setHttpMajor(unsigned short http_major) {
     _http_major = http_major;
@@ -56,4 +60,8 @@ void HttpResponse::setContentLength(unsigned long long content_length) {
 
 void HttpResponse::setIsChunked(bool is_chunked) {
     _is_chunked = is_chunked;
+}
+
+void HttpResponse::setBody(const char* body) {
+    _body = const_cast<char*>(body);
 }

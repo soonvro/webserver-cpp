@@ -22,6 +22,8 @@ class Client {
     void                              addBuf(const char* buf, size_t size);
     void                              addReqs(HttpRequest& req);
     void                              addRess(HttpResponse& res);
+
+    void                              clearRess(void);
 };
 
 #endif

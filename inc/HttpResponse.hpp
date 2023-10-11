@@ -20,6 +20,9 @@ class HttpResponse {
     unsigned long long                        _content_length;
     bool                                      _is_chunked;
 
+    // body
+    char*                                     _body;
+
   public:
     const unsigned short&                     getHttpMajor(void) const;
     const unsigned short&                     getHttpMinor(void) const;
@@ -30,6 +33,7 @@ class HttpResponse {
     const std::map<std::string, std::string>& getHeader(void) const;
     const unsigned long long&                 getContentLength(void) const;
     const bool&                               getIsChunked(void) const;
+    const char*                               getBody(void) const;
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -38,6 +42,7 @@ class HttpResponse {
     void                                      setHeaders(const std::map<std::string, std::string>& headers);
     void                                      setContentLength(unsigned long long content_length);
     void                                      setIsChunked(bool is_chunked);
+    void                                      setBody(const char* body);
 };
 
 #endif
