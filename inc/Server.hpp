@@ -23,6 +23,8 @@
 #include "Client.hpp"
 #include "Host.hpp"
 
+#define BUF_SIZE 4096
+
 class Server {
   private:
   Host _default_host; 
