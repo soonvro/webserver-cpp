@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include <iterator>
+#include "Encoder.hpp"
 
 Server::Server(const char *configure_file) {
 	std::cout << "Server constructing : " << configure_file << std::endl;
@@ -65,14 +66,18 @@ void	Server::sendHttpResponse(int client_fd){
 	const std::vector<HttpResponse>& responses = client.getRess();
 
 	for (size_t i = 0; i < responses.size(); i++){
-		std::string encoded_response = Encoder.execute(responses[i]);
-		char* buf = encoded_response.c_str();
+		std::string encoded_response = Encoder::execute(responses[i]);
+		const char* buf = encoded_response.c_str();
 		write(client_fd, buf, strlen(buf));
-		buf = responses[i].getBody().c_str();
-		write(client_fd, buf, strlen(buf));
+		buf = responses[i].getBody();
+		write(client_fd, buf, responses[i].getBodySize());
 	}
 	client.clearRess();
-	//has eof -> disconnect client
+	if (client.getHasEof()){
+		disconnect_client(client_fd);
+	} else {
+		change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
+	}
 }
 
 void	Server::recvHttpRequest(int client_fd){

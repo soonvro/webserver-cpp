@@ -10,8 +10,9 @@ std::string Encoder::execute(const HttpResponse& res){
   encoded_response += res.getStatusMessage();
   encoded_response += "\r\n";
   
-  std::map<std::string, std::string>::iterator it = res.getHeader();
-  while (it != res.end()){
+  const std::map<std::string, std::string>& headers = res.getHeader();
+  std::map<std::string, std::string>::const_iterator it = headers.begin();
+  while (it != headers.end()){
     encoded_response += it->first;
     encoded_response += ": ";
     encoded_response += it->second;

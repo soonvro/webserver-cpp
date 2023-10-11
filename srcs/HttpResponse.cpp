@@ -33,6 +33,10 @@ const char* HttpResponse::getBody() const {
     return _body;
 }
 
+const size_t& HttpResponse::getBodySize() const {
+    return _body_size;
+}
+
 // Setters
 void HttpResponse::setHttpMajor(unsigned short http_major) {
     _http_major = http_major;
@@ -64,4 +68,8 @@ void HttpResponse::setIsChunked(bool is_chunked) {
 
 void HttpResponse::setBody(const char* body) {
     _body = const_cast<char*>(body);
+}
+
+void HttpResponse::setBodySize(size_t body_size) {
+    _body_size = body_size;
 }

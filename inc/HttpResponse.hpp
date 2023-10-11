@@ -22,6 +22,7 @@ class HttpResponse {
 
     // body
     char*                                     _body;
+    size_t                                    _body_size;
 
   public:
     const unsigned short&                     getHttpMajor(void) const;
@@ -34,6 +35,7 @@ class HttpResponse {
     const unsigned long long&                 getContentLength(void) const;
     const bool&                               getIsChunked(void) const;
     const char*                               getBody(void) const;
+    const size_t&                             getBodySize(void) const;
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -43,6 +45,7 @@ class HttpResponse {
     void                                      setContentLength(unsigned long long content_length);
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const char* body);
+    void                                      setBodySize(size_t body_size);
 };
 
 #endif
