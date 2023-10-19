@@ -103,7 +103,3 @@ void test_HttpDecoder(void) {
   for (int i = 0; i < static_cast<int>(sizeof(g_case_failure)/sizeof(g_case_failure[0])); i++)
     doTest(g_case_failure[i]);
 }
-
-int main() {
-  test_HttpDecoder();
-}
