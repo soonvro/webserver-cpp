@@ -5,7 +5,15 @@
 #include "Encoder.hpp"
 
 void Server::parseConfig(const char* config_file) {
-  // getline
+  // ifstream config
+
+  // get line
+  // trim WS
+  //  get key
+  //  is key block ? module ?
+  //   block set block
+  // http - server
+  // http - server - location
 }
 
 Server::Server(const char* configure_file) {
@@ -96,34 +104,26 @@ void Server::sendHttpResponse(int client_fd) {
 }
 
 void Server::recvHttpRequest(int client_fd) {
-  char b[1000] = {
-      0,
-  };
-  int a = read(client_fd, b, 1000);
-  std::cout << "read: " << a << std::endl;
+  // recv request
 
-  while (a != 0) {
-    a = read(client_fd, b, 1000);
-    std::cout << "read: " << a << std::endl;
-  }
+  // make request
 
-  Client& client = _clients[client_fd];
-  HttpResponse res;
-  res.setHttpMajor(1);
-  res.setHttpMinor(1);
-  res.setStatus(200);
-  res.setStatusMessage("OK");
-  std::map<std::string, std::string> headers;
-  headers["Content-Type"] = "text/html";
-  int fd = open("index.html", O_RDONLY);
-  char* buf = new char[1000];
-  int size = read(fd, buf, 1000);
-  headers["Content-Length"] = std::to_string(size);
-  res.setHeaders(headers);
-  res.setBody(buf);
-  res.setBodySize(size);
-  client.addRess(res);
-  change_events(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  // find location
+  //
+  // if static request
+  //  if file return file
+  //  if directory return index file or 404
+  //  if no location return 404
+  //  make response
+  //  enable write kevent
+
+  // else cgi request
+  //
+  // export env
+  // make pipe
+  // if post write stream
+  // execve php
+  // enable cgi read kevent
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
