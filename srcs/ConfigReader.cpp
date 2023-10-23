@@ -191,7 +191,7 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
 
 void ConfigReader::onServerBlockIn(std::string word, std::ifstream& config) {
   Host h;
-  while (1) {
+  while (_state != kDead) {
     if (word == "listen") {
       int port;
 
