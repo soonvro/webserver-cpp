@@ -98,26 +98,6 @@ void Server::sendHttpResponse(int client_fd) {
 
 void Server::recvHttpRequest(int client_fd) {
   client_fd++;
-  // recv request
-
-  // make request
-
-  // find location
-  //
-  // if static request
-  //  if file return file
-  //  if directory return index file or 404
-  //  if no location return 404
-  //  make response
-  //  enable write kevent
-
-  // else cgi request
-  //
-  // export env
-  // make pipe
-  // if post write stream
-  // execve php
-  // enable cgi read kevent
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
