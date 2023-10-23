@@ -13,13 +13,7 @@ class Host {
 
   int _port;
 
-  // std::map<int, std::string> _default_error_pages;
-
-  // size_t _max_client_body_size;
-
   std::map<std::string, RouteRule> _route_rules;
-
-  // std::pair<int, std::string> _redirection;
 
  public:
   Host();
@@ -30,19 +24,11 @@ class Host {
   int getPort() const;
   void setPort(int port);
 
-  const std::map<int, std::string>& getDefaultErrorPages() const;
-  void setDefaultErrorPages(const std::map<int, std::string>& errorPages);
-
-  size_t getMaxClientBodySize() const;
-  void setMaxClientBodySize(size_t maxSize);
-
   const std::map<std::string, RouteRule>& getRouteRules() const;
   void setRouteRules(const std::map<std::string, RouteRule>& routeRules);
 
   void addRouteRule(const std::string& route, const RouteRule& rule);
-
-  const std::pair<int, std::string>& getRedirection() const;
-  void setRedirection(const std::pair<int, std::string>& redirection);
+  bool  hasRouteRule(const std::string& route) const;
 };
 
 #endif

@@ -43,17 +43,6 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
     kLocationStart,
     kLocationPath,
     kLocationCgiPath,
-
-    // kLocationRoot,
-    // kLocationIndex,
-    // kLocationReturn,
-    // kLocationErrorPage,
-    // kLocationAutoIndex,
-    // kLocationCgiRoot,
-    // KlocationClientMaxBodySize,
-    // KlocationLimitExcept,
-
-    // kLocationDead,
   };
 
   RouteRule r;
@@ -174,6 +163,10 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           r.setAcceptedMethods(methods);
         } else if (word == "}") {
           _state = kServerBlockIn;
+          if (h.hasRouteRule(r.getRoute())) {
+            _state = kDead;
+            return;
+          }
           h.addRouteRule(r.getRoute(), r);
           return;
         } else {
