@@ -7,16 +7,18 @@
 #include <string>
 
 enum ReaderState {
-  kMainBlockStart,
-  kMainBlockEnd,
+  kStart,
 
   kHttpBlockStart,
+  kHttpBlockIn,
   kHttpBlockEnd,
 
   kServerBlockStart,
+  kServerBlockIn,
   kServerBlockEnd,
 
   kLocationBlockStart,
+  kLocationBlockIn,
   kLocationBlockEnd,
 
 };
