@@ -229,6 +229,7 @@ void HttpDecoder::readNBytes(unsigned int n) {
   return;
 }
 
+// uric without "?"
 bool HttpDecoder::isNormalUrlChar(const char c) {
   static const bool is_url_char[] = {
   // 0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel
@@ -262,7 +263,7 @@ bool HttpDecoder::isNormalUrlChar(const char c) {
   //12  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w
         1    ,   1    ,   1    ,   1    ,   1    ,   1    ,   1    ,   1,
   //20  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del
-        1    ,   1    ,   1    ,   0    ,   0    ,   0    ,   0    ,   0, };
+        1    ,   1    ,   1    ,   0    ,   0    ,   0    ,   1    ,   0, };
   if (static_cast<int>(c) < 0) return false;
   return is_url_char[static_cast<int>(c)];
 }
@@ -287,31 +288,40 @@ enum HPS::DecoderState HttpDecoder::checkMethod(void) {
 // This check origin-form.
 // This decoder only allows the "http" schema.
 enum HPS::DecoderState HttpDecoder::checkUrl(const char* const& url_start) {
+  unsigned int scheme_len = sizeof("ttp://") - 1;
   while (true) {
     if (_p - url_start > URL_LEN_MAX) return HPS::kDead;
     switch (_state) {
       case HPS::kUrlStart:
-        // if (std::isalpha(_c)) {
-          // _state = HPS::kUrlSchema;
-          // continue;
-        // }
-        if (_c != '/') return HPS::kDead;
-        _state = HPS::kUrlPath;
+        if (_c == '/') _state = HPS::kUrlPath;
+        else if (_c == 'h' || _c == 'H') _state = HPS::kUrlH;
+        else return HPS::kDead;
         break;
-      // case HPS::kUrlSchema:
-        // if (std::isalpha(_c)) break;
-        // if (!HPS_IS_STR(_p, "://")) return HPS::kDead;
-        // strToLower(const_cast<char*>(url_start), const_cast<char*>(_p));
-        // if (!HPS_IS_STR(url_start, "http"))  return HPS::kDead;
-        // _p += (HPS_LITERAL_STRLEN("://") - 1);
-        // _n_read += (HPS_LITERAL_STRLEN("://") - 1);
-        // _state = HPS::kUrlHost;
-        // break;
-      // case HPS::kUrlHost:
-        // if (_c == '/') _state = HPS::kUrlPath;
-        // else if (_c == '?') _state = HPS::kUrlQuery;
-        // else if (!this->isNormalUrlChar(_c)) return HPS::kDead;
-        // break;
+      case HPS::kUrlH:
+        if (_buf_len - _n_read < scheme_len ||
+            !(this->isStrNCaseInsensOfLhs(_p, _p + scheme_len, "ttp://", scheme_len))) {
+          return HPS::kDead;
+        }
+        _state = HPS::kUrlHostStart;
+        this->readNBytes(scheme_len);
+        continue;
+      case HPS::kUrlHostStart:
+        if (!std::isalnum(_c)) return HPS::kDead;
+        _state = HPS::kUrlHost;
+        break;
+      case HPS::kUrlHost:
+        if (_c == '/') _state = HPS::kUrlPath;
+        else if (_c == '?') _state = HPS::kUrlQuery;
+        else if (_c == ':') _state = HPS::kUrlPort;
+        else if (HPS_IS_WHITESPACE(_c)) return HPS::kUrlEnd;
+        else if (!std::isalnum(_c) && _c != '-' && _c != '.') return HPS::kDead;
+        break;
+      case HPS::kUrlPort:
+        if (_c == '/') _state = HPS::kUrlPath;
+        else if (_c == '?') _state = HPS::kUrlQuery;
+        else if (HPS_IS_WHITESPACE(_c)) return HPS::kUrlEnd;
+        else if (!std::isdigit(_c)) return HPS::kDead;
+        break;
       case HPS::kUrlPath:
         if (_c == ' ') return HPS::kUrlEnd;
         if (_c == '?') _state = HPS::kUrlQuery;
