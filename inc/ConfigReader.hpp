@@ -1,13 +1,14 @@
 #ifndef CONFIGREADER_H__
 #define CONFIGREADER_H__
 
-#include <Host.hpp>
 #include <fstream>
 #include <map>
 #include <string>
 
+#include "Host.hpp"
+
 enum ReaderState {
-  kStart,
+  kMainStart,
 
   kHttpBlockStart,
   kHttpBlockIn,
@@ -21,6 +22,9 @@ enum ReaderState {
   kLocationBlockIn,
   kLocationBlockEnd,
 
+  kEnd,
+
+  kDead,
 };
 
 class ConfigReader {
@@ -38,6 +42,16 @@ class ConfigReader {
   std::string filename;
 
   enum ReaderState _state;
+
+  void onStart(std::string word, std::ifstream& config);
+  void onBlockStart(std::string word, enum ReaderState state);
+  void onHttpBlockIn(std::string word, std::ifstream& config);
+  void onServerBlockIn(std::string word, std::ifstream& config);
+  void onHttpBlockEnd(std::string word, std::ifstream& config);
+  void onServerBlockEnd(std::string word, std::ifstream& config);
+
+  void addHost(const Host& host);
+  void handleLocationBlock(std::string word, std::ifstream& config, Host& host);
 };
 
 #endif
