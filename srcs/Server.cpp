@@ -79,40 +79,8 @@ void Server::sendHttpResponse(int client_fd) {
 }
 
 void Server::recvHttpRequest(int client_fd) {
-
-  char buf[BUF_SIZE];
-  int read_size = read(client_fd, buf, BUF_SIZE);
-  write(1, buf, read_size);
-
-
-  std::string path = "/a/index.html";
-  std::string host = "host88";
-  Client& client = _clients[client_fd];
-  const int& port = client.getPort();
-  std::cout << "client port : " << port << std::endl;
-
-
-  Host a = _hosts[std::make_pair(host, port)];
-  std::cout << "host name : " << a.getName() << std::endl;
-  std::cout << "host port : " << a.getPort() << std::endl;
-  std::map<std::string, RouteRule> route_rules = a.getRouteRules();
-  RouteRule r;
-
-  if (route_rules.find("/a") == route_rules.end())  {
-    throw std::runtime_error("Error: route rule not found.");
-  }else{
-    r = route_rules["/a"];
-    std::string loc = r.getLocation() + path;
-    std::ifstream ifs(loc.c_str());
-    if (ifs.fail()) {
-      throw std::runtime_error("Error: file open fail.");
-    }else{
-      std::string c;
-      ifs >> c;
-      write(client_fd, c.c_str(), c.size());
-    }
-  }
-  
+  client_fd++;
+  std::cout << client_fd;
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
