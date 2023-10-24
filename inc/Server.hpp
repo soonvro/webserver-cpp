@@ -11,7 +11,6 @@
 #include <exception>
 #include <iostream>
 #include <map>
-#include <set>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -28,7 +27,7 @@ class Server {
  private:
   Host _default_host;
   std::map<std::pair<std::string, int>, Host> _hosts;
-  std::set<int> _server_sockets;
+  std::map<int, int> _server_sockets;
 
   int _kq;
   std::vector<struct kevent> _change_list;

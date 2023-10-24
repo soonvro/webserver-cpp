@@ -1,6 +1,7 @@
 #include "Server.hpp"
 
 #include <iterator>
+#include <set>
 
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
@@ -50,7 +51,7 @@ void Server::connectClient(int server_socket) {
                 0, NULL);
   change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
                 0, 0, NULL);
-  _clients[client_socket] = Client();
+  _clients[client_socket] = Client(_server_sockets[server_socket]);
 }
 
 void Server::sendHttpResponse(int client_fd) {
@@ -78,8 +79,40 @@ void Server::sendHttpResponse(int client_fd) {
 }
 
 void Server::recvHttpRequest(int client_fd) {
-  client_fd++;
-  std::cout << client_fd;
+
+  char buf[BUF_SIZE];
+  int read_size = read(client_fd, buf, BUF_SIZE);
+  write(1, buf, read_size);
+
+
+  std::string path = "/a/index.html";
+  std::string host = "host88";
+  Client& client = _clients[client_fd];
+  const int& port = client.getPort();
+  std::cout << "client port : " << port << std::endl;
+
+
+  Host a = _hosts[std::make_pair(host, port)];
+  std::cout << "host name : " << a.getName() << std::endl;
+  std::cout << "host port : " << a.getPort() << std::endl;
+  std::map<std::string, RouteRule> route_rules = a.getRouteRules();
+  RouteRule r;
+
+  if (route_rules.find("/a") == route_rules.end())  {
+    throw std::runtime_error("Error: route rule not found.");
+  }else{
+    r = route_rules["/a"];
+    std::string loc = r.getLocation() + path;
+    std::ifstream ifs(loc.c_str());
+    if (ifs.fail()) {
+      throw std::runtime_error("Error: file open fail.");
+    }else{
+      std::string c;
+      ifs >> c;
+      write(client_fd, c.c_str(), c.size());
+    }
+  }
+  
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
@@ -92,16 +125,18 @@ void Server::init(void) {
   if (_kq == -1) throw std::runtime_error("Error: kqueue fail.");
 
   std::map<std::pair<std::string, int>, Host>::iterator it = _hosts.begin();
+  std::set<int> ports;
   while (it != _hosts.end()) {
     Host& h = it->second;
-    if (_server_sockets.find(h.getPort()) != _server_sockets.end()) {
+    if (ports.find(h.getPort()) != ports.end()) {
       it++;
       continue;
     }
     int socket_fd = socket(PF_INET, SOCK_STREAM, 0);
     if (socket_fd == -1) throw std::runtime_error("Error: socket failed.");
     fcntl(socket_fd, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
-    _server_sockets.insert(socket_fd);
+    _server_sockets[socket_fd] = h.getPort();
+    ports.insert(h.getPort());
 
     struct sockaddr_in sock_addr;
     sock_addr.sin_family = AF_INET;

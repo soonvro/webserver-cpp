@@ -31,9 +31,9 @@ http {
 
   server {
     listen       81;
-    server_name  localhosts;
+    server_name  host88;
 
-    location / {
+    location /a {
         root   html;
         index  50x.html;
         return 301 http:://127.0.0.1:80/hi.html;
