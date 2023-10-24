@@ -7,25 +7,6 @@
 
 Server::Server(const char* configure_file) {
   std::cout << "Server constructing : " << configure_file << std::endl;
-  // configure 파일 파싱 후 _hosts, _default_host 설정해야함.
-  // test host
-  // Host h;
-
-  // h.setName("localhost");
-  // h.setPort(8080);
-
-  // RouteRule r;
-  // std::string path = "/";
-  // r.setRoute(path);
-  // r.setLocation(path);
-  // r.setAcceptedMethods(1);
-  // std::map<std::string, RouteRule> rm;
-  // rm[path] = r;
-
-  // h.setRouteRules(rm);
-
-  // _default_host = h;
-  // _hosts[make_pair(h.getName(), h.getPort())] = h;
   ConfigReader reader(configure_file);
   reader.readFile();
   _hosts = reader.getHosts();
@@ -98,6 +79,7 @@ void Server::sendHttpResponse(int client_fd) {
 
 void Server::recvHttpRequest(int client_fd) {
   client_fd++;
+  std::cout << client_fd;
 }
 
 void Server::recvCgiResponse(int cgi_fd) {

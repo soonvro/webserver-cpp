@@ -51,6 +51,9 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
 
   std::string tmp;
 
+  bool is_client_limit_set = false;
+  bool is_auto_index_set = false;
+
   while (config >> word) {
     switch (_locationState) {
       case kLocationStart:
@@ -124,8 +127,10 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
             return;
           }
         } else if (word == "autoindex") {
-          if (config >> word && (word == "on;" || word == "off;")) {
+          if (!is_auto_index_set && config >> word &&
+              (word == "on;" || word == "off;")) {
             r.setAutoIndex(word == "on;");
+            is_auto_index_set = true;
           } else {
             _state = kDead;
             return;
@@ -139,6 +144,11 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
             return;
           }
         } else if (word == "limit_except") {
+          if (is_client_limit_set) {
+            _state = kDead;
+            return;
+          }
+          is_client_limit_set = true;
           int methods = 0;
           while (config >> word) {
             if (word == "{") break;
@@ -207,6 +217,7 @@ void ConfigReader::onServerBlockIn(std::string word, std::ifstream& config) {
         _state = kDead;
         return;
       }
+      word.pop_back();
       h.setName(word);
     } else if (word == "location") {
       handleLocationBlock(word, config, h);
