@@ -29,7 +29,7 @@
 HttpDecoder::HttpDecoder()
   : _method(HPS::kNotMethod), _uses_transfer_encoding(false),
     _content_length(0), _flag(0), _errno(HPS::kFailure), _data(NULL),
-    _buf(NULL), _n_read(0), _state(HPS::kMethodStart) {
+    _state(HPS::kMethodStart), _buf(NULL), _n_read(0) {
   std::memset(&_cb, 0, sizeof(HttpDecoderCallback));
 }
 
@@ -89,7 +89,11 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
       case HPS::kUrlEnd:
         if (_c == ' ') {
           if (_cb.on_url) {
-            _cb.on_url(this, p_prev, static_cast<unsigned int>(_p - p_prev));
+            if (!_cb.on_url(
+                  this, p_prev, static_cast<unsigned int>(_p - p_prev))) {
+              _state = HPS::kDead;
+              break;
+            }
           }
           this->readNBytes(1);
           _state = HPS::kHttpVerStart;
@@ -113,7 +117,10 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
         if (HPS_IS_NEWLINE(_p)) {
           this->readNBytes(_c == '\n' ? 1 : 2);
           if (_cb.on_headers_complete) {
-            _cb.on_headers_complete(this);
+            if (!_cb.on_headers_complete(this)) {
+              _state = HPS::kDead;
+              break;
+            }
           }
           return _n_read;
         }
@@ -152,7 +159,11 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
           }
           else {
             if (_cb.on_header_field) {
-              _cb.on_header_field(this, p_prev, static_cast<unsigned int>(_p - p_prev));
+              if (!_cb.on_header_field(
+                    this, p_prev, static_cast<unsigned int>(_p - p_prev))) {
+                _state = HPS::kDead;
+                break;
+              }
             }
             _state = HPS::kHeaderValueStart;
           }
@@ -175,7 +186,11 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
 
       case HPS::kHeaderValueEnd:
         if (_cb.on_header_value) {
-          _cb.on_header_value(this, p_prev, static_cast<unsigned int>(_p - p_prev));
+          if (!_cb.on_header_value(
+                this, p_prev, static_cast<unsigned int>(_p - p_prev))) {
+            _state = HPS::kDead;
+            break;
+          }
         }
         this->readNBytes(_c == '\n' ? 1 : 2);
         _state = HPS::kHeaderFieldStart;

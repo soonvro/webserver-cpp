@@ -9,11 +9,12 @@ class HttpDecoder {
   HttpDecoder();
   ~HttpDecoder();
 
-  void setCallback(t_http_cb      on_message_begin, t_http_data_cb on_url,
-                   t_http_data_cb on_status,        t_http_data_cb on_header_field,
-                   t_http_data_cb on_header_value,  t_http_cb      on_headers_complete,
-                   t_http_data_cb on_body,          t_http_cb      on_message_complete,
-                   t_http_cb      on_chunk_header,  t_http_cb      on_chunk_complete);
+  void setCallback(
+      t_http_cb      on_message_begin, t_http_data_cb on_url,
+      t_http_data_cb on_status,        t_http_data_cb on_header_field,
+      t_http_data_cb on_header_value,  t_http_cb      on_headers_complete,
+      t_http_data_cb on_body,          t_http_cb      on_message_complete,
+      t_http_cb      on_chunk_header,  t_http_cb      on_chunk_complete);
   void setDataSpace(void* data);
   unsigned int execute(const char* buf, const unsigned int len);
 
@@ -43,14 +44,13 @@ class HttpDecoder {
   enum HPS::DecoderState checkContentLength(void);
   enum HPS::DecoderState checkTransferEncoding(void);
 
-  const char*  _buf;
-  unsigned int _buf_len;
-  const char*  _p; // The current position within the _buf.
-  char         _c; // The current char within the _buf.
-  unsigned int _n_read; // The char bytes within the buf that has been read.
+  enum HPS::DecoderState _state;
+  const char*            _buf;
+  unsigned int           _buf_len;
+  const char*            _p; // The current position within the _buf.
+  char                   _c; // The current char within the _buf.
+  unsigned int           _n_read; // The char bytes that has been read.
 
-  enum HPS::DecoderState       _state;
-  // enum HPS::DecoderHeaderState _header_state; //메이크용으로 주석 처리했어요. -werror 에 걸려서요.
   HttpDecoderCallback _cb;
 };
 
