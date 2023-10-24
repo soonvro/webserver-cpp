@@ -1,55 +1,48 @@
 #include "Host.hpp"
 
-// Getter and Setter for _name
-const std::string& Host::getName() const {
-    return _name;
-}
+Host::Host() : _name(""), _port(-1) {}
 
-void Host::setName(const std::string& name) {
-    _name = name;
-}
+const std::string& Host::getName() const { return _name; }
 
-// Getter and Setter for _port
-int Host::getPort() const {
-    return _port;
-}
+void Host::setName(const std::string& name) { _name = name; }
 
-void Host::setPort(int port) {
-    _port = port;
-}
+int Host::getPort() const { return _port; }
 
-// Getter and Setter for _default_error_pages
-const std::map<int, std::string>& Host::getDefaultErrorPages() const {
-    return _default_error_pages;
-}
+void Host::setPort(int port) { _port = port; }
 
-void Host::setDefaultErrorPages(const std::map<int, std::string>& errorPages) {
-    _default_error_pages = errorPages;
-}
-
-// Getter and Setter for _max_client_body_size
-size_t Host::getMaxClientBodySize() const {
-    return _max_client_body_size;
-}
-
-void Host::setMaxClientBodySize(size_t maxSize) {
-    _max_client_body_size = maxSize;
-}
-
-// Getter and Setter for _route_rules
 const std::map<std::string, RouteRule>& Host::getRouteRules() const {
-    return _route_rules;
+  return _route_rules;
 }
 
 void Host::setRouteRules(const std::map<std::string, RouteRule>& routeRules) {
-    _route_rules = routeRules;
+  _route_rules = routeRules;
 }
 
-// Getter and Setter for _redirection
-const std::pair<int, std::string>& Host::getRedirection() const {
-    return _redirection;
+void Host::addRouteRule(const std::string& route, const RouteRule& rule) {
+  _route_rules[route] = rule;
 }
 
-void Host::setRedirection(const std::pair<int, std::string>& redirection) {
-    _redirection = redirection;
+const RouteRule& Host::getRouteRule(const std::string& route) const {
+  //prefix
+  std::map<std::string, RouteRule>::const_iterator it = _route_rules.begin();
+  const RouteRule* rule;
+  while (it != _route_rules.end()) {
+    if (route.compare(0, it->first.size(), it->first) == 0 \
+    && (!rule || rule->getRoute().size() > it->first.size())) {
+      rule = &(it->second);
+    }
+    it++;
+  }
+
+  //suffix
+  it = _route_rules.begin();
+  while (it != _route_rules.end()) {
+    if (route.compare(route.size() - it->first.size(), it->first.size(), it->first) == 0 \
+    && (!rule || rule->getRoute().size() < it->first.size() || !rule->getIsCgi())) {
+      rule = &(it->second);
+    }
+    it++;
+  }
+  if (rule) return *rule;
+  throw std::runtime_error("Error: route rule not found.");
 }

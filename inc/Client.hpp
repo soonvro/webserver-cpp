@@ -13,12 +13,20 @@ class Client {
     std::vector<HttpResponse>         _ress;
 
     bool                              _has_eof;
+
+    int                               _port;  
   public:
+    Client();
+    Client(int port);
+
+    Client& operator=(const Client& other);
+
     const std::vector<char>&          getBuf(void) const;
     const size_t&                     getReadIdx(void) const;
     const std::vector<HttpRequest>&   getReqs(void) const;
     const std::vector<HttpResponse>&  getRess(void) const;
     const bool&                       getHasEof(void) const;
+    const int&                        getPort(void) const;
 
     void                              clearBuf(void);
 

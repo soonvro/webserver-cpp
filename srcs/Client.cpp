@@ -1,5 +1,22 @@
 #include "Client.hpp"
 
+Client::Client() : _port(-1) {}
+
+Client::Client(int port) : _port(port) {}
+
+Client& Client::operator=(const Client& other) {
+  if (this == &other)
+    return *this;
+  _buf = other._buf;
+  _read_idx = other._read_idx;
+  _reqs = other._reqs;
+  _ress = other._ress;
+  _has_eof = other._has_eof;
+  _port = other._port;
+  return *this;
+}
+
+const int&                        Client::getPort(void) const { return _port; }
 const std::vector<char>&          Client::getBuf(void) const { return _buf; }
 const size_t&                     Client::getReadIdx(void) const { return _read_idx; }
 const std::vector<HttpRequest>&   Client::getReqs(void) const { return _reqs; }
