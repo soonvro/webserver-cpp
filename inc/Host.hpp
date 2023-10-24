@@ -28,7 +28,8 @@ class Host {
   void setRouteRules(const std::map<std::string, RouteRule>& routeRules);
 
   void addRouteRule(const std::string& route, const RouteRule& rule);
-  bool  hasRouteRule(const std::string& route) const;
+
+  const RouteRule& getRouteRule(const std::string& route) const;
 };
 
 #endif

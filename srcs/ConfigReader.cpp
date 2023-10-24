@@ -173,7 +173,7 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           r.setAcceptedMethods(methods);
         } else if (word == "}") {
           _state = kServerBlockIn;
-          if (h.hasRouteRule(r.getRoute())) {
+          if (h.getRouteRules().find(r.getRoute()) != h.getRouteRules().end()) {
             _state = kDead;
             return;
           }

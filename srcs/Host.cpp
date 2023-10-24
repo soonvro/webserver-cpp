@@ -22,6 +22,27 @@ void Host::addRouteRule(const std::string& route, const RouteRule& rule) {
   _route_rules[route] = rule;
 }
 
-bool Host::hasRouteRule(const std::string& route) const {
-  return _route_rules.find(route) != _route_rules.end();
+const RouteRule& Host::getRouteRule(const std::string& route) const {
+  //prefix
+  std::map<std::string, RouteRule>::const_iterator it = _route_rules.begin();
+  const RouteRule* rule;
+  while (it != _route_rules.end()) {
+    if (route.compare(0, it->first.size(), it->first) == 0 \
+    && (!rule || rule->getRoute().size() > it->first.size())) {
+      rule = &(it->second);
+    }
+    it++;
+  }
+
+  //suffix
+  it = _route_rules.begin();
+  while (it != _route_rules.end()) {
+    if (route.compare(route.size() - it->first.size(), it->first.size(), it->first) == 0 \
+    && (!rule || rule->getRoute().size() < it->first.size() || !rule->getIsCgi())) {
+      rule = &(it->second);
+    }
+    it++;
+  }
+  if (rule) return *rule;
+  throw std::runtime_error("Error: route rule not found.");
 }

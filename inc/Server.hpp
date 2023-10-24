@@ -50,8 +50,6 @@ class Server {
 
   void recvCgiResponse(int cgi_fd);
 
-  void parseConfig(const char *config_file);
-
  public:
   Server(const char *configure_file);
   ~Server();
