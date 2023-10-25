@@ -35,6 +35,8 @@ class Server {
   std::map<int, Client> _clients;
   std::map<int, std::string> _cgi;  // value 바꿔야함.
 
+  void setSocketOption(int socket_fd);
+
   void change_events(std::vector<struct kevent> &change_list, uintptr_t ident,
                      int16_t filter, uint16_t flags, uint32_t fflags,
                      intptr_t data, void *udata);

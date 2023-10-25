@@ -16,6 +16,16 @@ Server::Server(const char* configure_file) {
 
 Server::~Server() {}
 
+void Server::setSocketOption(int socket_fd) {
+    int is_reuseaddr = 1;
+    setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &is_reuseaddr, sizeof(is_reuseaddr));
+
+    struct linger linger_opt;
+    linger_opt.l_onoff = 1;
+    linger_opt.l_linger = 0;
+    setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+}
+
 void Server::change_events(std::vector<struct kevent>& change_list,
                            uintptr_t ident, int16_t filter, uint16_t flags,
                            uint32_t fflags, intptr_t data, void* udata) {
