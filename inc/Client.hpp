@@ -28,6 +28,8 @@ class Client {
     const bool&                       getHasEof(void) const;
     const int&                        getPort(void) const;
 
+    HttpRequest&                      lastRequest(void);
+
     void                              clearBuf(void);
 
     void                              addBuf(const char* buf, size_t size);
@@ -37,6 +39,9 @@ class Client {
 
     void                              clearRess(void);
     void                              setHasEof(bool has_eof);
+
+    int                               headerEndIdx(const size_t& start);
+    const std::vector<char>           subBuf(const size_t start, const size_t end);
 };
 
 #endif
