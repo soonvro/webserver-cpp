@@ -27,7 +27,7 @@ class Server {
  private:
   Host _default_host;
   std::map<std::pair<std::string, int>, Host> _hosts;
-  std::map<int, int> _server_sockets;
+  std::map<int, int> _server_sockets;  // <socket_fd, port>
 
   int _kq;
   std::vector<struct kevent> _change_list;
