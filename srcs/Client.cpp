@@ -1,8 +1,8 @@
 #include "Client.hpp"
 
-Client::Client() : _port(-1) {}
+Client::Client() : _read_idx(0), _port(-1) {}
 
-Client::Client(int port) : _port(port) {}
+Client::Client(int port) : _read_idx(0), _port(port) {}
 
 Client& Client::operator=(const Client& other) {
   if (this == &other)
@@ -23,6 +23,11 @@ const std::vector<HttpRequest>&   Client::getReqs(void) const { return _reqs; }
 const std::vector<HttpResponse>&  Client::getRess(void) const { return _ress; }
 const bool&                       Client::getHasEof(void) const { return _has_eof; }
 
+HttpRequest&                      Client::lastRequest(void) {
+  std::vector<HttpRequest>::iterator  it = _reqs.end(); --it;
+  return *it;
+}
+
 void                              Client::clearBuf(void) {
   _buf.clear();
   _read_idx = 0;
@@ -38,3 +43,33 @@ void                              Client::addReqs(HttpRequest& req) { _reqs.push
 void                              Client::addRess(HttpResponse& res) { _ress.push_back(res); }
 void                              Client::clearRess(void) {_ress.clear(); }
 void                              Client::setHasEof(bool has_eof) { _has_eof = has_eof; }
+
+int                               Client::headerEndIdx(const size_t& start) {
+  size_t idx = start;
+
+  if (_buf.size() < 2) return -1;
+  if (idx < 1) idx = 1;
+
+  for (; idx < _buf.size(); ++idx) {
+    if (_buf[idx] == '\n') {
+      bool flag = true;
+      for (int j = idx - 1; j >= 0 && j > static_cast<int>(idx) - 4; --j) {
+        if (_buf[j] == '\r') {
+          if (flag) flag = false;
+          else break ;
+        } else if (_buf[j] == '\n') return idx + 1;
+        else break ;
+      }
+    }
+  }
+  return -1;
+}
+
+const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
+  std::vector<char> sub_buf;
+
+  for (size_t i = start;i < end; ++i) {
+    sub_buf.push_back(_buf[i]);
+  }
+  return sub_buf;
+}

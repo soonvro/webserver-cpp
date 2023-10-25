@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cstring>
-#include "HttpDecoder.h"
+#include "HttpDecoder.hpp"
 #include "HttpRequest.hpp"
 
 #define PRINT_DETAIL 0
