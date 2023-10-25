@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <set>
+#include <cstring>
 
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
@@ -71,7 +72,7 @@ void Server::sendHttpResponse(int client_fd) {
   for (size_t i = 0; i < responses.size(); i++) {
     std::string encoded_response = Encoder::execute(responses[i]);
     const char* buf = encoded_response.c_str();
-    write(client_fd, buf, strlen(buf));
+    write(client_fd, buf, std::strlen(buf));
     buf = &(responses[i].getBody())[0];
     write(client_fd, buf, responses[i].getContentLength());
     std::cout << "send" << std::endl;
