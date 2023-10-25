@@ -87,29 +87,35 @@ void Server::recvHttpRequest(int client_fd) {
   std::string server_name = "host88";
   int server_port = _server_sockets[client_fd];
   std::string route = "/a";
-  try{
-    Host& h = _hosts.find(std::make_pair(server_name, server_port)) == _hosts.end() \
-    ? _default_host : _hosts[std::make_pair(server_name, server_port)];
+  try {
+    Host& h =
+        _hosts.find(std::make_pair(server_name, server_port)) == _hosts.end()
+            ? _default_host
+            : _hosts[std::make_pair(server_name, server_port)];
     const RouteRule& r = h.getRouteRule(route);
 
     std::cout << r.getRoute() << std::endl;
 
-    // check access method
-    
-    // is redirection
-    
-    // client body size
-    
-    // has file?
-    // is autoindex on?
-    // is index?
-    // else 404
+    // method check
+    // 403
 
+    // client body size check
+    // 413
+    // return check
+
+    // is dir
+    // index on
+    // autoindex on
+    // 404
+
+    // is file
+    // find file
+    // 404
 
     // error page
-  }catch(std::exception& e){
+  } catch (std::exception& e) {
     std::cout << e.what() << std::endl;
-    //404 error
+    // 404 error
   }
 }
 
