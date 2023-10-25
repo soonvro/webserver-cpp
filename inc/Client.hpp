@@ -28,6 +28,8 @@ class Client {
     const bool&                       getHasEof(void) const;
     const int&                        getPort(void) const;
 
+    void                              setHasEof(bool has_eof);
+    
     void                              clearBuf(void);
 
     void                              addBuf(const char* buf, size_t size);
@@ -36,7 +38,6 @@ class Client {
     void                              addRess(HttpResponse& res);
 
     void                              clearRess(void);
-    void                              setHasEof(bool has_eof);
 };
 
 #endif
