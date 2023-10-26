@@ -25,15 +25,15 @@
 
 class Server {
  private:
-  Host _default_host;
+  Host                                        _default_host;
   std::map<std::pair<std::string, int>, Host> _hosts;
-  std::map<int, int> _server_sockets;
+  std::map<int, int>                          _server_sockets;
 
-  int _kq;
-  std::vector<struct kevent> _change_list;
+  int                                         _kq;
+  std::vector<struct kevent>                  _change_list;
 
-  std::map<int, Client> _clients;
-  std::map<int, std::string> _cgi;  // value 바꿔야함.
+  std::map<int, Client>                       _clients;
+  std::map<int, std::string>                  _cgi;  // value 바꿔야함.
 
   void change_events(std::vector<struct kevent> &change_list, uintptr_t ident,
                      int16_t filter, uint16_t flags, uint32_t fflags,
