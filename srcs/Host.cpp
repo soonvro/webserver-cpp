@@ -45,5 +45,5 @@ const RouteRule& Host::getRouteRule(const std::string& route) const {
     it++;
   }
   if (rule) return *rule;
-  throw std::runtime_error("Error: route rule not found.");
+  throw NoRouteRuleException();
 }

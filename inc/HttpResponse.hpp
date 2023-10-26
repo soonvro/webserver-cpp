@@ -3,10 +3,13 @@
 
 #include "HttpDecoder.hpp"
 #include "HttpRequest.hpp"
+#include "RouteRule.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
+
+#define BUF_SIZE 4096
 
 class HttpResponse {
   private:
@@ -25,6 +28,9 @@ class HttpResponse {
 
     // body
     std::vector<char>                         _body;
+
+    void                                      readFile(const std::string& path);
+    void                                      readDir(const std::string& path);
 
   public:
     HttpResponse();
@@ -49,7 +55,9 @@ class HttpResponse {
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const std::vector<char>& body);
 
-    // bool                                      publish(const HttpRequest& req);
+    void                                      publish(const HttpRequest& req, const RouteRule& r);
+    void                                      publicError(int status);
+    void                                      setHeader(const std::string& key, const std::string& value); 
 };
 
 #endif

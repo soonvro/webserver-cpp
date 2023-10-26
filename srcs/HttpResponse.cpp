@@ -1,4 +1,36 @@
+#include <fstream>
+#include <dirent.h>
 #include "HttpResponse.hpp"
+
+void                                      HttpResponse::readFile(const std::string& path){
+  std::ifstream i("." + path);
+  if (i.fail()){
+    throw std::runtime_error("Error: file open fail");
+  }
+  char buf[BUF_SIZE];
+  while (true){
+    i.read(buf, BUF_SIZE);
+    _body.insert(_body.end(), buf, buf + i.gcount());
+    if (i.eof()){
+      break ;
+    }
+    if (i.fail()){
+      throw std::runtime_error("Error: file open fail");
+    }
+  }
+  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  _headers["Content-Type"] = "text/html";
+}
+
+void                                      HttpResponse::readDir(const std::string& path){
+  DIR* dir = opendir(("." + path).c_str());
+  struct dirent* entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
+    _body.push_back('\n');
+  }
+}
+
 
 HttpResponse::HttpResponse() : _http_major(0), _http_minor(0), _status(0), _content_length(0), _is_chunked(false) {}
 
@@ -22,52 +54,46 @@ void                                      HttpResponse::setContentLength(unsigne
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
 
-// bool                                      HttpResponse::publish(const HttpRequest& req) {
-//   if (req.getHeaderArrived() && req.getEntityArrived()) {
-//     _http_major = req.getHttpMajor();
-//     _http_minor = req.getHttpMinor();
+void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
+    const std::string& location = req.getLocation();
 
-//     // location
-//     const std::string&  loc = req.getLocation();
-//     std::ifstream       ifs;
-//     std::stringstream   ss("");
+    if (!(rule.getAcceptedMethods() & (1 << req.getMethod())))
+      _status = 403;
+    else if (rule.getMaxClientBodySize() != 0 &&
+        rule.getMaxClientBodySize() < req.getEntity().size())
+      _status = 413;
+    else if (rule.getRedirection().first) {
+      _status = rule.getRedirection().first;
+      if (300 <= _status && _status < 400)
+        _headers["Location"] = rule.getRedirection().second;
+      else
+        _body.assign(rule.getRedirection().second.begin(), rule.getRedirection().second.end());
+      _headers["Content-Type"] = "text/html";
+    } else if (location[location.size() - 1] == '/') {
+      if (rule.getIndexPage().size()) {
+        _status = 200;
+        readFile(rule.getIndexPage());
+        // read file
+      } else if (rule.getAutoIndex()){
+        _status = 200;
+        readDir(location);
+        // read dir
+      } else{
+        _status = 404;
+      }
+    }else{
+      // read file
+      _status = 200;
+      readFile(rule.getLocation() + location);
+    }
+    if (rule.hasErrorPage(_status)) {
+      readFile(rule.getErrorPage(_status));
+    }
+}
 
-//     if (loc == "/") { // root
-//       ifs.open("index.html");
-//       if (ifs.fail()) throw std::runtime_error("can't read file."); // 오류 처리 생각해봐야 함. 50x ?
+void                                      HttpResponse::publicError(int status){
+  _status = status;
+  _headers["Content-Type"] = "text/html";
+}
 
-//       ss << ifs.rdbuf();
-      
-//       char  c;
-//       while (ss.get(c)) { _body.push_back(c); }
-//       ss.str(""); // stringstream 초기화
-
-//       _content_length = _body.size();
-//       ss << _content_length; // buff size
-
-//       _status = 200;
-//       _status_message = "OK";
-//       _headers["Content-Type"] = "text/html";
-//       _headers["Content-Length"] = ss.str();
-//     } else {
-//       ifs.open("404.html");
-//       if (ifs.fail()) throw std::runtime_error("can't read file."); // 오류 처리 생각해봐야 함. 50x ?
-
-//       ss << ifs.rdbuf();
-      
-//       char  c;
-//       while (ss.get(c)) { _body.push_back(c); }
-//       ss.str(""); // stringstream 초기화
-
-//       _content_length = _body.size();
-//       ss << _content_length; // buff size
-
-//       _status = 400;
-//       _status_message = "Bad Request";
-//       _headers["Content-Type"] = "text/html";
-//       _headers["Content-Length"] = ss.str();
-//     }
-//     return true;
-//   }
-//     return false;
-// }
+void                                    HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }

@@ -3,9 +3,9 @@
 #include "HttpDecoderEnums.h"
 
 RouteRule::RouteRule()
-    : _accepted_methods(0xFFFFFFFF),
+    : _accepted_methods(0x0),
+      _redirection(std::make_pair(0, "")),
       _autoIndex(false),
-      _isClientBodySizeSet(false),
       _max_client_body_size(0),
       _isCgi(false) {}
 
@@ -23,11 +23,9 @@ int RouteRule::getAcceptedMethods() const { return _accepted_methods; }
 
 void RouteRule::setAcceptedMethods(int methods) { _accepted_methods = methods; }
 
-bool RouteRule::getIsClientBodySizeSet() const { return _isClientBodySizeSet; }
+bool  RouteRule::getIsClientBodySizeSet() const { return _is_client_body_size_set; }  
 
-void RouteRule::setIsClientBodySizeSet(bool isSet) {
-  _isClientBodySizeSet = isSet;
-}
+void  RouteRule::setIsClientBodySizeSet(bool isSet) { _is_client_body_size_set = isSet; }
 
 size_t RouteRule::getMaxClientBodySize() const { return _max_client_body_size; }
 
@@ -35,29 +33,30 @@ void RouteRule::setMaxClientBodySize(size_t maxSize) {
   _max_client_body_size = maxSize;
 }
 
-const std::map<int, std::string>& RouteRule::getRedirection() const {
+const std::pair<int, std::string>& RouteRule::getRedirection() const {
   return _redirection;
 }
 
-void RouteRule::setRedirection(const std::map<int, std::string>& redirection) {
+void RouteRule::setRedirection(const std::pair<int, std::string>& redirection) {
   _redirection = redirection;
-}
-
-bool RouteRule::hasRedirection(int code) const {
-  return _redirection.find(code) != _redirection.end();
-}
-
-void RouteRule::addRedirection(int code, const std::string& url) {
-  _redirection[code] = url;
 }
 
 bool RouteRule::getAutoIndex() const { return _autoIndex; }
 
 void RouteRule::setAutoIndex(bool enable) { _autoIndex = enable; }
 
-const std::string& RouteRule::getIndexPage() const { return _index_page; }
+const std::string&  RouteRule::getIndexPage() const { return _index_page; }
+const std::string&  RouteRule::getErrorPage(int code) const { return _error_pages.at(code); }
 
 void RouteRule::setIndexPage(const std::string& index) { _index_page = index; }
+
+bool  RouteRule::hasRedirection(int code) const {
+  return _redirection.first == code;
+}
+
+void  RouteRule::addRedirection(int code, const std::string& url) {
+  _redirection = std::make_pair(code, url);
+}
 
 bool RouteRule::hasErrorPage(int code) const {
   return _error_pages.find(code) != _error_pages.end();

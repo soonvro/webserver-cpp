@@ -112,9 +112,20 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReadIdx(idx);
 
       if (!last_request.getEntityArrived()) return ;
-      HttpResponse res;
 
-      // res.publish(last_request);
+      HttpResponse res;
+      try{
+        res.publish(last_request, findRouteRule(last_request, client_fd));
+      } catch (std::runtime_error &e) {
+        res.publicError(500);
+        std::cout << e.what() << std::endl;
+      } catch (Host::NoRouteRuleException &e) {
+        res.publicError(404);
+        std::cout << e.what() << std::endl;
+      }
+      res.setContentLength(res.getBody().size());
+      res.setHeader("Connection", "keep-alive");
+
       cli.addRess(res);
       cli.addReadIdx(idx);
     }
@@ -145,7 +156,17 @@ void Server::recvHttpRequest(int client_fd) {
       if (req.getEntityArrived()) {
         HttpResponse res;
 
-        // res.publish(req); // req --> res
+      try{
+        res.publish(req, findRouteRule(req, client_fd));
+      } catch (std::runtime_error &e) {
+        res.publicError(500);
+        std::cout << e.what() << std::endl;
+      } catch (Host::NoRouteRuleException &e) {
+        res.publicError(404);
+        std::cout << e.what() << std::endl;
+      }
+      res.setContentLength(res.getBody().size());
+      res.setHeader("Connection", "keep-alive");
         cli.addRess(res);
       }
     }
@@ -221,4 +242,12 @@ void Server::run(void) {
       }
     }
   }
+}
+
+RouteRule Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
+  std::pair<std::string, int> key(req.getHost(), _clients[client_fd].getPort());
+  if (_hosts.count(key))
+    return (_hosts[key].getRouteRule(req.getLocation()));
+  else
+    return ( _default_host.getRouteRule(req.getLocation()));
 }

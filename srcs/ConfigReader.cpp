@@ -119,7 +119,7 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
         } else if (word == "error_page") {
           int code;
           if (config >> code >> word && word.back() == ';' &&
-              !r.hasErrorPage(code)) {
+              !r.hasErrorPage(code) && code >= 300 && code < 600) {
             word.pop_back();
             r.addErrorPage(code, word);
           } else {
@@ -150,17 +150,15 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
           is_client_limit_set = true;
           int methods = 0;
+          methods |= 1 << (HPS::kGET);
+          methods |= 1 << (HPS::kHEAD);
           while (config >> word) {
             if (word == "{") break;
-            if (word == "GET")
-              methods |= 1 << (HPS::kGET - 1);
-            else if (word == "HEAD")
-              methods |= 1 << (HPS::kHEAD - 1);
             else if (word == "POST")
-              methods |= 1 << (HPS::kPOST - 1);
+              methods |= 1 << (HPS::kPOST);
             else if (word == "DELETE")
-              methods |= 1 << (HPS::kDELETE - 1);
-            else {
+              methods |= 1 << (HPS::kDELETE);
+            else if (word != "GET" && word != "HEAD") {
               _state = kDead;
               return;
             }

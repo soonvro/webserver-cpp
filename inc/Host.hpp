@@ -16,6 +16,8 @@ class Host {
 
   std::map<std::string, RouteRule>  _route_rules;
 
+
+
  public:
   Host();
 
@@ -31,6 +33,10 @@ class Host {
 
   void addRouteRule(const std::string& route, const RouteRule& rule);
 
+  class NoRouteRuleException : public std::exception {
+   public:
+    const char* what() const throw() { return "RouteRule not found!"; }
+  };
 };
 
 #endif
