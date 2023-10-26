@@ -25,10 +25,10 @@ void Host::addRouteRule(const std::string& route, const RouteRule& rule) {
 const RouteRule& Host::getRouteRule(const std::string& route) const {
   //prefix
   std::map<std::string, RouteRule>::const_iterator it = _route_rules.begin();
-  const RouteRule* rule;
+  const RouteRule* rule = 0;
   while (it != _route_rules.end()) {
     if (route.compare(0, it->first.size(), it->first) == 0 \
-    && (!rule || rule->getRoute().size() > it->first.size())) {
+    && (!rule || rule->getRoute().size() < it->first.size())) {
       rule = &(it->second);
     }
     it++;
@@ -37,7 +37,8 @@ const RouteRule& Host::getRouteRule(const std::string& route) const {
   //suffix
   it = _route_rules.begin();
   while (it != _route_rules.end()) {
-    if (route.compare(route.size() - it->first.size(), it->first.size(), it->first) == 0 \
+    if (it->first.size() <= route.size() && \
+    route.compare(route.size() - it->first.size(), it->first.size(), it->first) == 0 \
     && (!rule || rule->getRoute().size() < it->first.size() || !rule->getIsCgi())) {
       rule = &(it->second);
     }

@@ -25,15 +25,17 @@
 
 class Server {
  private:
-  Host _default_host;
+  Host                                        _default_host;
   std::map<std::pair<std::string, int>, Host> _hosts;
+
   std::map<int, int> _server_sockets;  // <socket_fd, port>
 
-  int _kq;
-  std::vector<struct kevent> _change_list;
 
-  std::map<int, Client> _clients;
-  std::map<int, std::string> _cgi;  // value 바꿔야함.
+  int                                         _kq;
+  std::vector<struct kevent>                  _change_list;
+
+  std::map<int, Client>                       _clients;
+  std::map<int, std::string>                  _cgi;  // value 바꿔야함.
 
   void setSocketOption(int socket_fd);
 

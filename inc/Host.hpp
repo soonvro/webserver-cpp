@@ -10,27 +10,27 @@
 
 class Host {
  private:
-  std::string _name;
+  std::string                       _name;
 
-  int _port;
+  int                               _port;
 
-  std::map<std::string, RouteRule> _route_rules;
+  std::map<std::string, RouteRule>  _route_rules;
 
  public:
   Host();
 
-  const std::string& getName() const;
-  void setName(const std::string& name);
-
-  int getPort() const;
-  void setPort(int port);
-
+  const std::string&                      getName() const;
+  int                                     getPort() const;
   const std::map<std::string, RouteRule>& getRouteRules() const;
+  const RouteRule&                        getRouteRule(const std::string& route) const;
+
+  void                                    setName(const std::string& name);
+  void                                    setPort(int port);
+
   void setRouteRules(const std::map<std::string, RouteRule>& routeRules);
 
   void addRouteRule(const std::string& route, const RouteRule& rule);
 
-  const RouteRule& getRouteRule(const std::string& route) const;
 };
 
 #endif
