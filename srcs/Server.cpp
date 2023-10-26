@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <set>
+#include <cstring>
 
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
@@ -15,6 +16,16 @@ Server::Server(const char* configure_file) {
 }
 
 Server::~Server() {}
+
+void Server::setSocketOption(int socket_fd) {
+    int is_reuseaddr = 1;
+    setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &is_reuseaddr, sizeof(is_reuseaddr));
+
+    struct linger linger_opt;
+    linger_opt.l_onoff = 1;
+    linger_opt.l_linger = 0;
+    setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+}
 
 void Server::change_events(std::vector<struct kevent>& change_list,
                            uintptr_t ident, int16_t filter, uint16_t flags,
@@ -61,7 +72,7 @@ void Server::sendHttpResponse(int client_fd) {
   for (size_t i = 0; i < responses.size(); i++) {
     std::string encoded_response = Encoder::execute(responses[i]);
     const char* buf = encoded_response.c_str();
-    write(client_fd, buf, strlen(buf));
+    write(client_fd, buf, std::strlen(buf));
     buf = &(responses[i].getBody())[0];
     write(client_fd, buf, responses[i].getContentLength());
     std::cout << "send" << std::endl;
@@ -196,14 +207,11 @@ void Server::run(void) {
       if (curr_event->flags & EV_ERROR) {  // error event
         handle_error_kevent(curr_event->ident);
       } else if (curr_event->filter == EVFILT_READ) {
-        if (_server_sockets.find(curr_event->ident) !=
-            _server_sockets.end()) {  // socket read event
+        if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
-        } else if (_clients.find(curr_event->ident) !=
-                   _clients.end()) {  // client read event
+        } else if (_clients.count(curr_event->ident)) {  // client read event
           recvHttpRequest(curr_event->ident);
-        } else if (_cgi.find(curr_event->ident) !=
-                   _cgi.end()) {  // cgi read event
+        } else if (_cgi.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
