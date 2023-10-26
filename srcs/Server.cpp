@@ -47,6 +47,8 @@ void Server::disconnect_client(const int client_fd) {
   std::cout << "Client disconnected: " << client_fd << std::endl;
   close(client_fd);
   _clients.erase(client_fd);
+//   change_events(_change_list, client_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+//   change_events(_change_list, client_fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 }
 
 void Server::connectClient(int server_socket) {
@@ -205,6 +207,9 @@ void Server::run(void) {
     for (int i = 0; i < new_event; ++i) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
+        handle_error_kevent(curr_event->ident);
+      } else if (curr_event->flags & EV_EOF) {  // error event
+        std::cout << "EOF!!" << std::endl;
         handle_error_kevent(curr_event->ident);
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
