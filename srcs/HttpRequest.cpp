@@ -13,59 +13,22 @@ HttpRequest::HttpRequest()
 HttpRequest::~HttpRequest() {}
 
 // Getters
-const HPS::Method& HttpRequest::getMethod() const {
-  return _method;
-}
-
-const std::string& HttpRequest::getHost() const {
-  return _host;
-}
-
-const std::string& HttpRequest::getLocation() const {
-  return _location;
-}
-
-const std::string& HttpRequest::getQueries() const {
-  return _queries;
-}
-
-const unsigned short& HttpRequest::getHttpMajor() const {
-  return _http_major;
-}
-
-const unsigned short& HttpRequest::getHttpMinor() const {
-  return _http_minor;
-}
-
-const std::map<std::string, std::string>& HttpRequest::getHeaders() const {
-  return _headers;
-}
-
-const unsigned long long& HttpRequest::getContentLength() const {
-  return _content_length;
-}
-
-const bool& HttpRequest::getIsChunked() const {
-  return _is_chunked;
-}
-
-const std::vector<char> HttpRequest::getEntity() const {
-  return _entity;
-}
-
-const bool& HttpRequest::getHeaderArrived() const {
-  return _header_arrived;
-}
-
-const bool& HttpRequest::getEntityArrived() const {
-  return _entity_arrived;
-}
+const HPS::Method&                        HttpRequest::getMethod() const { return _method; }
+const std::string&                        HttpRequest::getHost() const { return _host; }
+const std::string&                        HttpRequest::getLocation() const { return _location; }
+const std::string&                        HttpRequest::getQueries() const { return _queries; }
+const unsigned short&                     HttpRequest::getHttpMajor() const { return _http_major; }
+const unsigned short&                     HttpRequest::getHttpMinor() const { return _http_minor; }
+const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return _headers; }
+const unsigned long long&                 HttpRequest::getContentLength() const { return _content_length; }
+const bool&                               HttpRequest::getIsChunked() const { return _is_chunked; }
+const std::vector<char>                   HttpRequest::getEntity() const { return _entity; }
+const bool&                               HttpRequest::getHeaderArrived() const { return _header_arrived; }
+const bool&                               HttpRequest::getEntityArrived() const { return _entity_arrived; }
 
 /******************************************************************************/
 /*                                   Private                                  */
 /******************************************************************************/
-
-#include <iostream>
 
 bool HttpRequest::isStrCase(const char* lhs_start, unsigned int lhs_len,
                             const char* rhs) {
@@ -215,6 +178,25 @@ bool HttpRequest::parseHeaderValue(
       return false;
   }
   return true;
+}
+
+int HttpRequest::settingContent(const std::vector<char>& buf) {
+  size_t i = 0;
+
+  if (_entity.size() == _content_length) {
+    _entity_arrived = true;
+    return i;
+  }
+
+  for (; i < buf.size(); ++i) {
+    if (_entity.size() == _content_length) {
+      _entity_arrived = true;
+      break ;
+    }
+    _entity.push_back(buf[i]);
+  }
+
+  return i;
 }
 
 /*  call back example

@@ -1,5 +1,5 @@
-#ifndef HTTPDECODER_H_
-#define HTTPDECODER_H_
+#ifndef HTTPDECODER_HPP_
+#define HTTPDECODER_HPP_
 
 #include "HttpDecoderEnums.h"
 #include "HttpDecoderCallback.h"

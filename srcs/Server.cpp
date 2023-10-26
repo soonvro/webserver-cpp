@@ -62,10 +62,9 @@ void Server::sendHttpResponse(int client_fd) {
     std::string encoded_response = Encoder::execute(responses[i]);
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, strlen(buf));
-    buf = responses[i].getBody();
-    write(client_fd, buf, responses[i].getBodySize());
+    buf = &(responses[i].getBody())[0];
+    write(client_fd, buf, responses[i].getContentLength());
     std::cout << "send" << std::endl;
-    delete[] buf;
   }
   client.clearRess();
   if (client.getHasEof()) {
@@ -79,8 +78,68 @@ void Server::sendHttpResponse(int client_fd) {
 }
 
 void Server::recvHttpRequest(int client_fd) {
-  client_fd++;
-  std::cout << client_fd;
+  char    buf[BUF_SIZE] = {0,};
+  Client& cli = _clients[client_fd];
+
+  int n;
+  while ((n = read(client_fd, buf, BUF_SIZE)) != 0) {
+    if (n == -1) {
+      if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
+      throw std::runtime_error("Error: read error.");
+    }
+    if (n > 0) cli.addBuf(buf, n);
+  }
+  if (n == 0) cli.setHasEof(true);
+
+  int idx;
+  if (cli.getReqs().size() > 0) {
+    HttpRequest&  last_request = cli.lastRequest();
+
+    if (!last_request.getEntityArrived()) {
+      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+      cli.addReadIdx(idx);
+
+      if (!last_request.getEntityArrived()) return ;
+      HttpResponse res;
+
+      // res.publish(last_request);
+      cli.addRess(res);
+      cli.addReadIdx(idx);
+    }
+  }
+
+  while ((idx = cli.headerEndIdx(cli.getReadIdx())) != -1) { // header 읽기 (\r\n\r\n)
+    HttpRequest             req;
+    HttpDecoder             hd;
+    size_t                  size = idx - cli.getReadIdx();
+    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), idx);
+
+      hd.setCallback(
+          NULL, HttpRequest::sParseUrl,
+          NULL, HttpRequest::sSaveHeaderField,
+          HttpRequest::sParseHeaderValue, HttpRequest::sSaveRquestData,
+          NULL, NULL,
+          NULL, NULL);
+      hd.setDataSpace(static_cast<void*>(&req));
+
+    if (hd.execute(&(data)[0], size) == size) {
+
+      cli.addReadIdx(idx);
+
+      cli.addReqs(req);
+
+      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+      cli.addReadIdx(idx);
+      if (req.getEntityArrived()) {
+        HttpResponse res;
+
+        // res.publish(req); // req --> res
+        cli.addRess(res);
+      }
+    }
+  }
+  std::cout << "response size: " << cli.getRess().size() << std::endl;
+  if (cli.getRess().size() > 0) change_events(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::recvCgiResponse(int cgi_fd) {

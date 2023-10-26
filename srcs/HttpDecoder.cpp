@@ -1,4 +1,4 @@
-#include "HttpDecoder.h"
+#include "HttpDecoder.hpp"
 
 #include <cctype> //isalpha
 #include <cstring> //memcmp, memset
