@@ -47,8 +47,6 @@ void Server::disconnect_client(const int client_fd) {
   std::cout << "Client disconnected: " << client_fd << std::endl;
   close(client_fd);
   _clients.erase(client_fd);
-//   change_events(_change_list, client_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-//   change_events(_change_list, client_fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 }
 
 void Server::connectClient(int server_socket) {
@@ -58,6 +56,7 @@ void Server::connectClient(int server_socket) {
     throw std::runtime_error("Error: accept fail");
   fcntl(client_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
 
+  setSocketOption(client_socket);
   std::cout << "accept new client: " << client_socket << std::endl;
 
   change_events(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
@@ -182,8 +181,7 @@ void Server::init(void) {
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     sock_addr.sin_port = htons(h.getPort());
-    int option = 1;
-    setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    setSocketOption(socket_fd);
     if (bind(socket_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) == -1)
       throw std::runtime_error("Error: bind failed.");
     if (listen(socket_fd, BACKLOG) == -1)
@@ -208,9 +206,8 @@ void Server::run(void) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
         handle_error_kevent(curr_event->ident);
-      } else if (curr_event->flags & EV_EOF) {  // error event
-        std::cout << "EOF!!" << std::endl;
-        handle_error_kevent(curr_event->ident);
+      } else if (curr_event->flags & EV_EOF) {  
+        disconnect_client(curr_event->ident);
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
