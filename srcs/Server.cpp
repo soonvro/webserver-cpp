@@ -27,7 +27,7 @@ void Server::setSocketOption(int socket_fd) {
     setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
 }
 
-void Server::change_events(std::vector<struct kevent>& change_list,
+void Server::changeEvents(std::vector<struct kevent>& change_list,
                            uintptr_t ident, int16_t filter, uint16_t flags,
                            uint32_t fflags, intptr_t data, void* udata) {
   struct kevent tmp;
@@ -36,14 +36,14 @@ void Server::change_events(std::vector<struct kevent>& change_list,
   change_list.push_back(tmp);
 }
 
-void Server::handle_error_kevent(int fd) {
+void Server::handleErrorKevent(int fd) {
   if (_server_sockets.find(fd) != _server_sockets.end())
     throw std::runtime_error("Error: server socket error.");
   std::cerr << "client socket error" << std::endl;
-  disconnect_client(fd);
+  disconnectClient(fd);
 }
 
-void Server::disconnect_client(const int client_fd) {
+void Server::disconnectClient(const int client_fd) {
   std::cout << "Client disconnected: " << client_fd << std::endl;
   close(client_fd);
   _clients.erase(client_fd);
@@ -59,9 +59,9 @@ void Server::connectClient(int server_socket) {
   setSocketOption(client_socket);
   std::cout << "accept new client: " << client_socket << std::endl;
 
-  change_events(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
+  changeEvents(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                 0, NULL);
-  change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
+  changeEvents(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
                 0, 0, NULL);
   _clients[client_socket] = Client(_server_sockets[server_socket], getTime(), KEEPALIVETIMEOUT);
 }
@@ -79,9 +79,9 @@ void Server::sendHttpResponse(int client_fd) {
     client.popRess();
     std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
   }
-  change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
+  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
-  if (client.getEof()) disconnect_client(client_fd);
+  if (client.getEof()) disconnectClient(client_fd);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -153,12 +153,11 @@ void Server::recvHttpRequest(int client_fd) {
       HttpResponse res;
       cli.setEof(true);
       res.publishError(400);
-      cli.popReqs();
       cli.addRess(res);
     }
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
-  if (cli.getRess().size() > 0) change_events(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  if (cli.getRess().size() > 0) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
@@ -193,11 +192,11 @@ void Server::init(void) {
       throw std::runtime_error("Error: bind failed.");
     if (listen(socket_fd, BACKLOG) == -1)
       throw std::runtime_error("Error: listen fail.");
-    change_events(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
+    changeEvents(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                   0, NULL);
     it++;
   }
-  change_events(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
+  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
 }
 
 void Server::run(void) {
@@ -213,9 +212,9 @@ void Server::run(void) {
     for (int i = 0; i < new_event; ++i) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
-        handle_error_kevent(curr_event->ident);
+        handleErrorKevent(curr_event->ident);
       } else if (curr_event->flags & EV_EOF) {  
-        disconnect_client(curr_event->ident);
+        disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
       } else if (curr_event->filter == EVFILT_READ) {
@@ -259,5 +258,5 @@ void      Server::checkTimeout(void){
   }
 
   for (size_t i = 0; i < disconnect_list.size(); i++)
-    disconnect_client(disconnect_list[i]);
+    disconnectClient(disconnect_list[i]);
 }

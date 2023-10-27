@@ -40,12 +40,12 @@ class Server {
 
   void      setSocketOption(int socket_fd);
 
-  void      change_events(std::vector<struct kevent> &change_list, uintptr_t ident,
+  void      changeEvents(std::vector<struct kevent> &change_list, uintptr_t ident,
                      int16_t filter, uint16_t flags, uint32_t fflags,
                      intptr_t data, void *udata);
 
-  void      handle_error_kevent(int ident);
-  void      disconnect_client(const int client_fd);
+  void      handleErrorKevent(int ident);
+  void      disconnectClient(const int client_fd);
 
   void      connectClient(int server_socket);
 
