@@ -130,19 +130,19 @@ void Server::recvHttpRequest(int client_fd) {
     }
   }
 
-  while ((idx = cli.headerEndIdx(cli.getReadIdx())) != -1) { // header 읽기 (\r\n\r\n)
+  while ((idx = cli.headerEndIdx(cli.getReadIdx())) >= 0) { // header 읽기 (\r\n\r\n)
     HttpRequest             req;
     HttpDecoder             hd;
-    size_t                  size = idx - cli.getReadIdx();
-    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), idx);
-    cli.addReadIdx(idx);
-      hd.setCallback(
-          NULL, HttpRequest::sParseUrl,
-          NULL, HttpRequest::sSaveHeaderField,
-          HttpRequest::sParseHeaderValue, HttpRequest::sSaveRquestData,
-          NULL, NULL,
-          NULL, NULL);
-      hd.setDataSpace(static_cast<void*>(&req));
+    size_t                  size = static_cast<size_t>(idx);
+    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
+    cli.addReadIdx(size);
+    hd.setCallback(
+        NULL, HttpRequest::sParseUrl,
+        NULL, HttpRequest::sSaveHeaderField,
+        HttpRequest::sParseHeaderValue, HttpRequest::sSaveRquestData,
+        NULL, NULL,
+        NULL, NULL);
+    hd.setDataSpace(static_cast<void*>(&req));
 
     if (hd.execute(&(data)[0], size) == size) {
       idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
