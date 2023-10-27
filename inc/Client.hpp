@@ -3,14 +3,15 @@
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include <queue>
 
 class Client {
   private:
     std::vector<char>                 _buf;
     size_t                            _read_idx;
 
-    std::vector<HttpRequest>          _reqs;
-    std::vector<HttpResponse>         _ress;
+    std::queue<HttpRequest>          _reqs;
+    std::queue<HttpResponse>         _ress;
 
     bool                              _has_eof;
 
@@ -25,14 +26,14 @@ class Client {
 
     const std::vector<char>&          getBuf(void) const;
     const size_t&                     getReadIdx(void) const;
-    const std::vector<HttpRequest>&   getReqs(void) const;
-    const std::vector<HttpResponse>&  getRess(void) const;
+    const std::queue<HttpRequest>&    getReqs(void) const;
+    const std::queue<HttpResponse>&   getRess(void) const;
     const bool&                       getHasEof(void) const;
     const int&                        getPort(void) const;
     const time_t&                     getLastRequestTime() const;
     const time_t&                     getTimeoutInterval() const;
 
-    HttpRequest&                      lastRequest(void);
+    HttpRequest&                      backRequest(void);
 
     void                              clearBuf(void);
 
@@ -41,7 +42,8 @@ class Client {
     void                              addReqs(HttpRequest& req);
     void                              addRess(HttpResponse& res);
 
-    void                              clearRess(void);
+    void                              popReqs(void);
+    void                              popRess(void);
     void                              setHasEof(bool has_eof);
 
     int                               headerEndIdx(const size_t& start);

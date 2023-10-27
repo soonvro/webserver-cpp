@@ -68,19 +68,20 @@ void Server::connectClient(int server_socket) {
 
 void Server::sendHttpResponse(int client_fd) {
   Client& client = _clients[client_fd];
-  const std::vector<HttpResponse>& responses = client.getRess();
+  const std::queue<HttpResponse>& responses = client.getRess();
 
-  for (size_t i = 0; i < responses.size(); i++) {
-    std::string encoded_response = Encoder::execute(responses[i]);
+  while (responses.size() > 0) {
+    std::string encoded_response = Encoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, std::strlen(buf));
-    buf = &(responses[i].getBody())[0];
-    write(client_fd, buf, responses[i].getContentLength());
+    buf = &(responses.front().getBody())[0];
+    write(client_fd, buf, responses.front().getContentLength());
+    client.popRess();
     std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
   }
-  client.clearRess();
   change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
+  if (client.getHasEof()) disconnect_client(client_fd);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -99,11 +100,12 @@ void Server::recvHttpRequest(int client_fd) {
 
   int idx;
   if (cli.getReqs().size() > 0) {
-    HttpRequest&  last_request = cli.lastRequest();
+    HttpRequest&  last_request = cli.backRequest();
+
     if (!last_request.getEntityArrived()) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));//개터로 readIndx, buf 안가져와도 내부에서 접근하는게 나을거같아요.
       cli.addReadIdx(idx);
-
+      
       if (!last_request.getEntityArrived()) return ;
 
       HttpResponse res;
@@ -123,6 +125,7 @@ void Server::recvHttpRequest(int client_fd) {
       res.setHeader("Connection", "keep-alive");
 
       cli.addRess(res);
+      cli.popReqs();
       cli.addReadIdx(idx);
     }
   }
@@ -132,7 +135,7 @@ void Server::recvHttpRequest(int client_fd) {
     HttpDecoder             hd;
     size_t                  size = idx - cli.getReadIdx();
     const std::vector<char> data = cli.subBuf(cli.getReadIdx(), idx);
-
+    cli.addReadIdx(idx);
       hd.setCallback(
           NULL, HttpRequest::sParseUrl,
           NULL, HttpRequest::sSaveHeaderField,
@@ -142,18 +145,17 @@ void Server::recvHttpRequest(int client_fd) {
       hd.setDataSpace(static_cast<void*>(&req));
 
     if (hd.execute(&(data)[0], size) == size) {
-      cli.addReadIdx(idx);
+      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
       cli.addReqs(req);
-
-      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         HttpResponse res;
       try{
         res.publish(req, findRouteRule(req, client_fd));
       } catch (Host::NoRouteRuleException &e) {
-        res.publicError(404, findRouteRule(req, client_fd));
+        RouteRule rule;
+        res.publicError(404, rule);
         std::cout << e.what() << std::endl;
       } catch (HttpResponse::FileNotFoundException &e) {
         res.publicError(404, findRouteRule(req, client_fd));
@@ -164,7 +166,18 @@ void Server::recvHttpRequest(int client_fd) {
       } 
       res.setContentLength(res.getBody().size());
       res.setHeader("Connection", "keep-alive");
-        cli.addRess(res);
+      cli.popReqs();
+      cli.addRess(res);
+      }
+    } else {
+      HttpResponse res;
+      cli.setHasEof(true);
+      try{
+        res.publicError(400, findRouteRule(req, client_fd));
+      } catch (Host::NoRouteRuleException &e){
+        RouteRule rule;
+        res.publicError(404, rule);
+        std::cout << e.what() << std::endl;
       }
     }
   }
