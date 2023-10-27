@@ -3,7 +3,7 @@
 #include "HttpResponse.hpp"
 
 void                                      HttpResponse::readFile(const std::string& path){
-  std::ifstream i("." + path);
+  std::ifstream i(path);
   if (i.fail()){
     throw std::runtime_error("Error: file open fail");
   }
@@ -23,7 +23,7 @@ void                                      HttpResponse::readFile(const std::stri
 }
 
 void                                      HttpResponse::readDir(const std::string& path){
-  DIR* dir = opendir(("." + path).c_str());
+  DIR* dir = opendir((path).c_str());
   struct dirent* entry;
   while ((entry = readdir(dir)) != nullptr) {
     _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
@@ -72,11 +72,11 @@ void                                      HttpResponse::publish(const HttpReques
     } else if (location[location.size() - 1] == '/') {
       if (rule.getIndexPage().size()) {
         _status = 200;
-        readFile(rule.getIndexPage());
+        readFile(rule.getRoot() + rule.getIndexPage());
         // read file
       } else if (rule.getAutoIndex()){
         _status = 200;
-        readDir(location);
+        readDir(rule.getRoot() + location);
         // read dir
       } else{
         _status = 404;
@@ -84,10 +84,10 @@ void                                      HttpResponse::publish(const HttpReques
     }else{
       // read file
       _status = 200;
-      readFile(rule.getLocation() + location);
+      readFile(rule.getRoot() + location);
     }
     if (rule.hasErrorPage(_status)) {
-      readFile(rule.getErrorPage(_status));
+      readFile(rule.getRoot() + rule.getErrorPage(_status));
     }
 }
 

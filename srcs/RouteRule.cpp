@@ -21,6 +21,9 @@ const std::string&                  RouteRule::getErrorPage(int code) const { re
 bool                                RouteRule::getIsCgi() const { return _isCgi; }
 const std::string&                  RouteRule::getCgiPath() const { return _cgiPath; }
 
+const std::string                   RouteRule::getRoot() const { return _location.empty() ? DEFAULT_ROOT : _location; }
+
+
 void                                RouteRule::setRoute(const std::string& route) { _route = route; }
 void                                RouteRule::setLocation(const std::string& location) { _location = location; }
 void                                RouteRule::setAcceptedMethods(int methods) { _accepted_methods = methods; }

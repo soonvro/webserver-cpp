@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 
+#define DEFAULT_ROOT "html"
+
 class RouteRule {
  private:
   std::string                   _route;
@@ -28,6 +30,9 @@ class RouteRule {
 
   bool hasErrorPage(int code) const;
   void addErrorPage(int code, const std::string& url);
+
+  const std::string                   getRoot() const;
+
 
   const std::string&                  getRoute() const;
   const std::string&                  getLocation() const;

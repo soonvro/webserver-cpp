@@ -56,10 +56,7 @@ class Server {
 
   RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);
 
-  class NoRouteRuleException : public std::exception {
-   public:
-    const char* what() const throw() { return "RouteRule not found!"; }
-  };
+
 
 
  public:

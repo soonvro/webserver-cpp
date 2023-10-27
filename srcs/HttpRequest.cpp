@@ -180,7 +180,7 @@ bool HttpRequest::parseHeaderValue(
   return true;
 }
 
-int HttpRequest::settingContent(const std::vector<char>& buf) {//buf 는 다 넣고 return 이 맞지 않아요? 없어지니까.
+int HttpRequest::settingContent(const std::vector<char>& buf) {
   size_t i = 0;
 
   if (_entity.size() == _content_length) {

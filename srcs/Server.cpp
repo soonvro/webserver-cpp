@@ -106,7 +106,7 @@ void Server::recvHttpRequest(int client_fd) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));//개터로 readIndx, buf 안가져와도 내부에서 접근하는게 나을거같아요.
       cli.addReadIdx(idx);
 
-      if (!last_request.getEntityArrived()) return ;
+      if (!last_request.getEntityArrived()) return ;//buf 는 다 넣고 return 이 맞지 않아요? 없어지니까.
 
       HttpResponse res;
       try{
