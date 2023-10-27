@@ -81,7 +81,7 @@ void Server::sendHttpResponse(int client_fd) {
   }
   change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
-  if (client.getHasEof()) disconnect_client(client_fd);
+  if (client.getEof()) disconnect_client(client_fd);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -96,34 +96,23 @@ void Server::recvHttpRequest(int client_fd) {
     }
     if (n > 0) cli.addBuf(buf, n);
   }
-  if (n == 0) cli.setHasEof(true);
+  if (n == 0) cli.setEof(true);
 
   int idx;
   if (cli.getReqs().size() > 0) {
     HttpRequest&  last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
-      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));//개터로 readIndx, buf 안가져와도 내부에서 접근하는게 나을거같아요.
+      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
-      
       if (!last_request.getEntityArrived()) return ;
-
       HttpResponse res;
       try{
         res.publish(last_request, findRouteRule(last_request, client_fd));
       } catch (Host::NoRouteRuleException &e) {
-        res.publicError(404, findRouteRule(last_request, client_fd));
+        res.publishError(404);
         std::cout << e.what() << std::endl;
-      } catch (HttpResponse::FileNotFoundException &e) {
-        res.publicError(404, findRouteRule(last_request, client_fd));
-        std::cout << e.what() << std::endl;
-      } catch (std::exception &e) {
-        res.publicError(500, findRouteRule(last_request, client_fd));
-        std::cout << e.what() << std::endl;
-      } 
-      res.setContentLength(res.getBody().size());
-      res.setHeader("Connection", "keep-alive");
-
+      }
       cli.addRess(res);
       cli.popReqs();
       cli.addReadIdx(idx);
@@ -151,34 +140,21 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         HttpResponse res;
-      try{
-        res.publish(req, findRouteRule(req, client_fd));
-      } catch (Host::NoRouteRuleException &e) {
-        RouteRule rule;
-        res.publicError(404, rule);
-        std::cout << e.what() << std::endl;
-      } catch (HttpResponse::FileNotFoundException &e) {
-        res.publicError(404, findRouteRule(req, client_fd));
-        std::cout << e.what() << std::endl;
-      } catch (std::exception &e) {
-        res.publicError(500, findRouteRule(req, client_fd));
-        std::cout << e.what() << std::endl;
-      } 
-      res.setContentLength(res.getBody().size());
-      res.setHeader("Connection", "keep-alive");
-      cli.popReqs();
-      cli.addRess(res);
+        try{
+          res.publish(req, findRouteRule(req, client_fd));
+        } catch (Host::NoRouteRuleException &e) {
+          res.publishError(404);
+          std::cout << e.what() << std::endl;
+        } 
+        cli.popReqs();
+        cli.addRess(res);
       }
     } else {
       HttpResponse res;
-      cli.setHasEof(true);
-      try{
-        res.publicError(400, findRouteRule(req, client_fd));
-      } catch (Host::NoRouteRuleException &e){
-        RouteRule rule;
-        res.publicError(404, rule);
-        std::cout << e.what() << std::endl;
-      }
+      cli.setEof(true);
+      res.publishError(400);
+      cli.popReqs();
+      cli.addRess(res);
     }
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;

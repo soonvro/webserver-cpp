@@ -67,7 +67,9 @@ void                                      HttpResponse::addContentLength(void) {
 
 void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
     const std::string& location = req.getLocation();
-
+    _headers["Content-Type"] = "text/html";
+    _headers["Connection"] = "keep-alive";
+    try{
     if (!(rule.getAcceptedMethods() & (1 << req.getMethod())))
       _status = 403;
     else if (rule.getMaxClientBodySize() != 0 &&
@@ -79,45 +81,44 @@ void                                      HttpResponse::publish(const HttpReques
         _headers["Location"] = rule.getRedirection().second;
       else
         _body.assign(rule.getRedirection().second.begin(), rule.getRedirection().second.end());
-      _headers["Content-Type"] = "text/html";
+      addContentLength();
+      return ;
     } else if (location[location.size() - 1] == '/') {
       if (rule.getIndexPage().size()) {
         _status = 200;
         readFile(rule.getRoot() + "/" + rule.getIndexPage());
-        // read file
       } else if (rule.getAutoIndex()){
         _status = 200;
         readDir(rule.getRoot() + location);
-        // read dir
       } else{
         _status = 404;
       }
     }else{
-      // read file
       _status = 200;
       readFile(rule.getRoot() + location);
     }
-    if (rule.hasErrorPage(_status)) {
-      readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
+    } catch (FileNotFoundException &e){
+      if (rule.hasErrorPage(_status)) {
+        try{
+          readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
+        } catch (FileNotFoundException &e){
+          publishError(404);
+        }
+      } else{
+        publishError(404);
+      }
     }
-
     addContentLength();
 }
 
-void                                      HttpResponse::publicError(int status, const RouteRule& rule){
+void                                      HttpResponse::publishError(int status){
   _status = status;
-  try{
-    if (rule.hasErrorPage(_status)) {
-     readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
-    }
-  } catch (std::exception &e) {
-    std::stringstream ss;
-    ss << _status;
-    std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
-    _body.assign(body_str.begin(), body_str.end());
-    std::cout << e.what() << std::endl;
-  }
+  std::stringstream ss;
+  ss << _status;
+  std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
+  _body.assign(body_str.begin(), body_str.end());
   _headers["Content-Type"] = "text/html";
+  _headers["Connection"] = "keep-alive";
   addContentLength();
 }
 

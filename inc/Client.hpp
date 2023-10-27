@@ -28,7 +28,7 @@ class Client {
     const size_t&                     getReadIdx(void) const;
     const std::queue<HttpRequest>&    getReqs(void) const;
     const std::queue<HttpResponse>&   getRess(void) const;
-    const bool&                       getHasEof(void) const;
+    const bool&                       getEof(void) const;
     const int&                        getPort(void) const;
     const time_t&                     getLastRequestTime() const;
     const time_t&                     getTimeoutInterval() const;
@@ -44,7 +44,7 @@ class Client {
 
     void                              popReqs(void);
     void                              popRess(void);
-    void                              setHasEof(bool has_eof);
+    void                              setEof(bool has_eof);
 
     int                               headerEndIdx(const size_t& start);
     const std::vector<char>           subBuf(const size_t start, const size_t end);

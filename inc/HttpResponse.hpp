@@ -60,7 +60,7 @@ class HttpResponse {
 
     void                                      addContentLength(void);
     void                                      publish(const HttpRequest& req, const RouteRule& r);
-    void                                      publicError(int status, const RouteRule& r);
+    void                                      publishError(int status);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
     class FileNotFoundException : public std::exception {
