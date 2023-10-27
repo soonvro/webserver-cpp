@@ -14,10 +14,12 @@ class Client {
 
     bool                              _has_eof;
 
-    int                               _port;  
+    int                               _port;
+    time_t                            _last_request_time;
+    time_t                            _timeout_interval;
   public:
     Client();
-    Client(int port);
+    Client(int port, time_t last_request_time, time_t timeout_interval);
 
     Client& operator=(const Client& other);
 
@@ -27,6 +29,8 @@ class Client {
     const std::vector<HttpResponse>&  getRess(void) const;
     const bool&                       getHasEof(void) const;
     const int&                        getPort(void) const;
+    const time_t&                     getLastRequestTime() const;
+    const time_t&                     getTimeoutInterval() const;
 
     HttpRequest&                      lastRequest(void);
 
@@ -42,6 +46,9 @@ class Client {
 
     int                               headerEndIdx(const size_t& start);
     const std::vector<char>           subBuf(const size_t start, const size_t end);
+
+    void                              setLastRequestTime(const time_t& last_request_time);
+    void                              setTimeoutInterval(const time_t& timeout_interval);
 };
 
 #endif

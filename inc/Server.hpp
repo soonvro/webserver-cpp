@@ -6,6 +6,7 @@
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <exception>
@@ -21,7 +22,7 @@
 #define BUF_SIZE 4096
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
-#define KEEPALIVETIMEOUT 65
+#define KEEPALIVETIMEOUT 60
 
 class Server {
  private:
@@ -56,7 +57,8 @@ class Server {
 
   RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);
 
-
+  time_t    getTime(void);  //return seconds
+  void      checkTimeout(void);
 
 
  public:

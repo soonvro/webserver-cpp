@@ -57,6 +57,7 @@ bool HttpRequest::parseUrl(
       case HPS::kUrlStart:
         if ((*at) == '/') {
           p_prev = at;
+          if (len == 1) _location.assign(p_prev, 1);
           state = HPS::kUrlPath;
         }
         else if ((*at) == 'h' || (*at) == 'H') state = HPS::kUrlH;
@@ -159,10 +160,12 @@ bool HttpRequest::recognizeHeaderField(
 bool HttpRequest::parseHeaderValue(
     HttpDecoder* hd, const char *at, unsigned int len) {
   (void)hd;
+  unsigned int host_end = 0;
   switch (_h_field) {
     case kHeaderHost:
       if (!_host.empty()) break;
-      _host.assign(at, len);
+      for (; (host_end < len && at[host_end] != ':'); ++host_end);
+      _host.assign(at, host_end);
       break;
     case kHeaderNomal:
       if (_headers.find(_last_headers_key) == _headers.end()) {

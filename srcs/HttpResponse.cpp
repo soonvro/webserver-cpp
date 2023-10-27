@@ -6,7 +6,7 @@
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
   if (i.fail()){
-    throw std::runtime_error("Error: file open fail");
+      throw FileNotFoundException();
   }
   char buf[BUF_SIZE];
   while (true){
@@ -16,16 +16,20 @@ void                                      HttpResponse::readFile(const std::stri
       break ;
     }
     if (i.fail()){
-      throw std::runtime_error("Error: file open fail");
+      throw FileNotFoundException();
     }
   }
   // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  // _headers["Content-Type"]에 path의 확장자에 따라서 적절한 값을 넣어줘야함.
   _headers["Content-Type"] = "text/html";
 }
 
 void                                      HttpResponse::readDir(const std::string& path){
   DIR* dir = opendir((path).c_str());
   struct dirent* entry;
+  if (dir == nullptr){
+    throw FileNotFoundException();
+  }
   while ((entry = readdir(dir)) != nullptr) {
     _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
     _body.push_back('\n');
@@ -79,7 +83,7 @@ void                                      HttpResponse::publish(const HttpReques
     } else if (location[location.size() - 1] == '/') {
       if (rule.getIndexPage().size()) {
         _status = 200;
-        readFile(rule.getRoot() + rule.getIndexPage());
+        readFile(rule.getRoot() + "/" + rule.getIndexPage());
         // read file
       } else if (rule.getAutoIndex()){
         _status = 200;
@@ -94,14 +98,25 @@ void                                      HttpResponse::publish(const HttpReques
       readFile(rule.getRoot() + location);
     }
     if (rule.hasErrorPage(_status)) {
-      readFile(rule.getRoot() + rule.getErrorPage(_status));
+      readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
     }
 
     addContentLength();
 }
 
-void                                      HttpResponse::publicError(int status){
+void                                      HttpResponse::publicError(int status, const RouteRule& rule){
   _status = status;
+  try{
+    if (rule.hasErrorPage(_status)) {
+     readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
+    }
+  } catch (std::exception &e) {
+    std::stringstream ss;
+    ss << _status;
+    std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
+    _body.assign(body_str.begin(), body_str.end());
+    std::cout << e.what() << std::endl;
+  }
   _headers["Content-Type"] = "text/html";
   addContentLength();
 }

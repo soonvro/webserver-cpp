@@ -63,7 +63,7 @@ void Server::connectClient(int server_socket) {
                 0, NULL);
   change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
                 0, 0, NULL);
-  _clients[client_socket] = Client(_server_sockets[server_socket]);
+  _clients[client_socket] = Client(_server_sockets[server_socket], getTime(), KEEPALIVETIMEOUT);
 }
 
 void Server::sendHttpResponse(int client_fd) {
@@ -76,10 +76,9 @@ void Server::sendHttpResponse(int client_fd) {
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses[i].getBody())[0];
     write(client_fd, buf, responses[i].getContentLength());
-    std::cout << "send" << std::endl;
+    std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
   }
   client.clearRess();
-  std::cout << "send alive" << std::endl;
   change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
 }
@@ -96,28 +95,30 @@ void Server::recvHttpRequest(int client_fd) {
     }
     if (n > 0) cli.addBuf(buf, n);
   }
-  if (n == 0) cli.setHasEof(true);//event filter EOF 쓰니까 안사용할거같아요.
+  if (n == 0) cli.setHasEof(true);
 
   int idx;
   if (cli.getReqs().size() > 0) {
     HttpRequest&  last_request = cli.lastRequest();
-
     if (!last_request.getEntityArrived()) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));//개터로 readIndx, buf 안가져와도 내부에서 접근하는게 나을거같아요.
       cli.addReadIdx(idx);
 
-      if (!last_request.getEntityArrived()) return ;//buf 는 다 넣고 return 이 맞지 않아요? 없어지니까.
+      if (!last_request.getEntityArrived()) return ;
 
       HttpResponse res;
       try{
         res.publish(last_request, findRouteRule(last_request, client_fd));
-      } catch (std::runtime_error &e) {
-        res.publicError(500);
-        std::cout << e.what() << std::endl;
       } catch (Host::NoRouteRuleException &e) {
-        res.publicError(404);
+        res.publicError(404, findRouteRule(last_request, client_fd));
         std::cout << e.what() << std::endl;
-      }
+      } catch (HttpResponse::FileNotFoundException &e) {
+        res.publicError(404, findRouteRule(last_request, client_fd));
+        std::cout << e.what() << std::endl;
+      } catch (std::exception &e) {
+        res.publicError(500, findRouteRule(last_request, client_fd));
+        std::cout << e.what() << std::endl;
+      } 
       res.setContentLength(res.getBody().size());
       res.setHeader("Connection", "keep-alive");
 
@@ -141,7 +142,6 @@ void Server::recvHttpRequest(int client_fd) {
       hd.setDataSpace(static_cast<void*>(&req));
 
     if (hd.execute(&(data)[0], size) == size) {
-
       cli.addReadIdx(idx);
 
       cli.addReqs(req);
@@ -150,16 +150,18 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         HttpResponse res;
-
       try{
         res.publish(req, findRouteRule(req, client_fd));
-      } catch (std::runtime_error &e) {
-        res.publicError(500);
-        std::cout << e.what() << std::endl;
       } catch (Host::NoRouteRuleException &e) {
-        res.publicError(404);
+        res.publicError(404, findRouteRule(req, client_fd));
         std::cout << e.what() << std::endl;
-      }
+      } catch (HttpResponse::FileNotFoundException &e) {
+        res.publicError(404, findRouteRule(req, client_fd));
+        std::cout << e.what() << std::endl;
+      } catch (std::exception &e) {
+        res.publicError(500, findRouteRule(req, client_fd));
+        std::cout << e.what() << std::endl;
+      } 
       res.setContentLength(res.getBody().size());
       res.setHeader("Connection", "keep-alive");
         cli.addRess(res);
@@ -206,6 +208,7 @@ void Server::init(void) {
                   0, NULL);
     it++;
   }
+  change_events(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
 }
 
 void Server::run(void) {
@@ -224,10 +227,13 @@ void Server::run(void) {
         handle_error_kevent(curr_event->ident);
       } else if (curr_event->flags & EV_EOF) {  
         disconnect_client(curr_event->ident);
+      } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
+        checkTimeout();
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients.count(curr_event->ident)) {  // client read event
+          _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
         } else if (_cgi.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
@@ -245,4 +251,24 @@ RouteRule Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
     return (_hosts[key].getRouteRule(req.getLocation()));
   else
     return ( _default_host.getRouteRule(req.getLocation()));
+}
+
+time_t Server::getTime(void) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec;
+}
+
+void      Server::checkTimeout(void){
+  std::vector<int> disconnect_list;
+
+  std::map<int, Client>::iterator it = _clients.begin();
+  for (; it != _clients.end(); it++) {
+    if (getTime() - it->second.getLastRequestTime() > it->second.getTimeoutInterval()) {
+      disconnect_list.push_back(it->first);
+    }
+  }
+
+  for (size_t i = 0; i < disconnect_list.size(); i++)
+    disconnect_client(disconnect_list[i]);
 }

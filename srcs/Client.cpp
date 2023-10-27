@@ -2,7 +2,8 @@
 
 Client::Client() : _read_idx(0), _port(-1) {}
 
-Client::Client(int port) : _read_idx(0), _port(port) {}
+Client::Client(int port, time_t last_request_time, time_t timeout_interval) 
+  : _read_idx(0), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
 
 Client& Client::operator=(const Client& other) {
   if (this == &other)
@@ -13,6 +14,8 @@ Client& Client::operator=(const Client& other) {
   _ress = other._ress;
   _has_eof = other._has_eof;
   _port = other._port;
+  _last_request_time = other._last_request_time;
+  _timeout_interval = other._timeout_interval;
   return *this;
 }
 
@@ -22,6 +25,8 @@ const size_t&                     Client::getReadIdx(void) const { return _read_
 const std::vector<HttpRequest>&   Client::getReqs(void) const { return _reqs; }
 const std::vector<HttpResponse>&  Client::getRess(void) const { return _ress; }
 const bool&                       Client::getHasEof(void) const { return _has_eof; }
+const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
+const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
 
 HttpRequest&                      Client::lastRequest(void) {
   std::vector<HttpRequest>::iterator  it = _reqs.end(); --it;
@@ -72,4 +77,12 @@ const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
     sub_buf.push_back(_buf[i]);//insert가 더 빠를거같아요. 
   }
   return sub_buf;
+}
+
+void Client::setLastRequestTime(const time_t& last_request_time) {
+  _last_request_time = last_request_time;
+}
+
+void Client::setTimeoutInterval(const time_t& timeout_interval) {
+  _timeout_interval = timeout_interval;
 }
