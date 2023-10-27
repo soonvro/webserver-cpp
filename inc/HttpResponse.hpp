@@ -55,6 +55,7 @@ class HttpResponse {
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const std::vector<char>& body);
 
+    void                                      addContentLength(void);
     void                                      publish(const HttpRequest& req, const RouteRule& r);
     void                                      publicError(int status);
     void                                      setHeader(const std::string& key, const std::string& value); 

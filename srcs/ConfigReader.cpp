@@ -150,8 +150,8 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
           is_client_limit_set = true;
           int methods = 0;
-          methods |= 1 << (HPS::kGET);
-          methods |= 1 << (HPS::kHEAD);
+            methods |= 1 << (HPS::kGET);
+            methods |= 1 << (HPS::kHEAD);
           while (config >> word) {
             if (word == "{") break;
             else if (word == "POST")

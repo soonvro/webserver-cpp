@@ -1,5 +1,6 @@
 #include <fstream>
 #include <dirent.h>
+#include <sstream>
 #include "HttpResponse.hpp"
 
 void                                      HttpResponse::readFile(const std::string& path){
@@ -54,6 +55,12 @@ void                                      HttpResponse::setContentLength(unsigne
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
 
+void                                      HttpResponse::addContentLength(void) {
+  std::stringstream ss;
+  ss << _body.size();
+  _headers["Content-Length"] = ss.str();
+}
+
 void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
     const std::string& location = req.getLocation();
 
@@ -89,11 +96,14 @@ void                                      HttpResponse::publish(const HttpReques
     if (rule.hasErrorPage(_status)) {
       readFile(rule.getRoot() + rule.getErrorPage(_status));
     }
+
+    addContentLength();
 }
 
 void                                      HttpResponse::publicError(int status){
   _status = status;
   _headers["Content-Type"] = "text/html";
+  addContentLength();
 }
 
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
