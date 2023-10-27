@@ -79,14 +79,9 @@ void Server::sendHttpResponse(int client_fd) {
     std::cout << "send" << std::endl;
   }
   client.clearRess();
-  if (client.getHasEof()) {
-    std::cout << "send eof" << std::endl;
-    disconnect_client(client_fd);
-  } else {
-    std::cout << "send alive" << std::endl;
-    change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
+  std::cout << "send alive" << std::endl;
+  change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
-  }
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -101,14 +96,14 @@ void Server::recvHttpRequest(int client_fd) {
     }
     if (n > 0) cli.addBuf(buf, n);
   }
-  if (n == 0) cli.setHasEof(true);
+  if (n == 0) cli.setHasEof(true);//event filter EOF 쓰니까 안사용할거같아요.
 
   int idx;
   if (cli.getReqs().size() > 0) {
     HttpRequest&  last_request = cli.lastRequest();
 
     if (!last_request.getEntityArrived()) {
-      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));//개터로 readIndx, buf 안가져와도 내부에서 접근하는게 나을거같아요.
       cli.addReadIdx(idx);
 
       if (!last_request.getEntityArrived()) return ;

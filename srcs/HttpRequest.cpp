@@ -180,7 +180,7 @@ bool HttpRequest::parseHeaderValue(
   return true;
 }
 
-int HttpRequest::settingContent(const std::vector<char>& buf) {
+int HttpRequest::settingContent(const std::vector<char>& buf) {//buf 는 다 넣고 return 이 맞지 않아요? 없어지니까.
   size_t i = 0;
 
   if (_entity.size() == _content_length) {
@@ -198,16 +198,3 @@ int HttpRequest::settingContent(const std::vector<char>& buf) {
 
   return i;
 }
-
-/*  call back example
-
-bool on_message_begin(HttpDecoder* hd) {
-  return 0; 
-}
-static bool sOnMessageBegin(HttpDecoder* hd){
-  HttpRequest* pthis = static_cast<HttpRequest*>(hd->_data);
-  hd = 0;
-  return pthis->on_message_begin(hd);
-}
-
-*/

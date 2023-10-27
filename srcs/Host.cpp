@@ -2,25 +2,15 @@
 
 Host::Host() : _name(""), _port(-1) {}
 
-const std::string& Host::getName() const { return _name; }
+const std::string&                      Host::getName() const { return _name; }
+int                                     Host::getPort() const { return _port; }
+const std::map<std::string, RouteRule>& Host::getRouteRules() const { return _route_rules; }
 
-void Host::setName(const std::string& name) { _name = name; }
+void                                    Host::setName(const std::string& name) { _name = name; }
+void                                    Host::setPort(int port) { _port = port; }
+void                                    Host::setRouteRules(const std::map<std::string, RouteRule>& routeRules) { _route_rules = routeRules; }
 
-int Host::getPort() const { return _port; }
-
-void Host::setPort(int port) { _port = port; }
-
-const std::map<std::string, RouteRule>& Host::getRouteRules() const {
-  return _route_rules;
-}
-
-void Host::setRouteRules(const std::map<std::string, RouteRule>& routeRules) {
-  _route_rules = routeRules;
-}
-
-void Host::addRouteRule(const std::string& route, const RouteRule& rule) {
-  _route_rules[route] = rule;
-}
+void Host::addRouteRule(const std::string& route, const RouteRule& rule) { _route_rules[route] = rule; }
 
 const RouteRule& Host::getRouteRule(const std::string& route) const {
   //prefix

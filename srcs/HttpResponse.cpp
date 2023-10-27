@@ -96,4 +96,4 @@ void                                      HttpResponse::publicError(int status){
   _headers["Content-Type"] = "text/html";
 }
 
-void                                    HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
+void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }

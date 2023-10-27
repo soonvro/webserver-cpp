@@ -10,7 +10,7 @@ ConfigReader::ConfigReader(const char* filename) : filename(filename) {}
 void ConfigReader::onStart(std::string word, std::ifstream& config) {
   if (word == "http") {
     _state = kHttpBlockStart;
-  } else if (word == "#") {
+  } else if (word[0] == '#') {
     std::getline(config, word);
   } else {
     _state = kDead;
@@ -22,7 +22,7 @@ void ConfigReader::onHttpBlockIn(std::string word, std::ifstream& config) {
     _state = kServerBlockStart;
   } else if (word == "}") {
     _state = kHttpBlockEnd;
-  } else if (word == "#") {
+  } else if (word[0] == '#') {
     std::getline(config, word);
   } else {
     _state = kDead;
@@ -177,7 +177,9 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
           h.addRouteRule(r.getRoute(), r);
           return;
-        } else {
+        } else if (word[0] == '#'){
+          std::getline(config, word);
+        }else {
           _state = kDead;
           return;
         }
@@ -223,6 +225,11 @@ void ConfigReader::onServerBlockIn(std::string word, std::ifstream& config) {
       _state = kServerBlockEnd;
       addHost(h);
       return;
+    } else if (word[0] == '#') {
+      std::getline(config, word);
+    } else{
+      _state = kDead;
+      return;
     }
     if (!(config >> word)) {
       _state = kDead;
@@ -232,7 +239,7 @@ void ConfigReader::onServerBlockIn(std::string word, std::ifstream& config) {
 }
 
 void ConfigReader::onHttpBlockEnd(std::string word, std::ifstream& config) {
-  if (word == "#") {
+  if (word[0] == '#') {
     std::getline(config, word);
     _state = kEnd;
   } else {
@@ -241,7 +248,7 @@ void ConfigReader::onHttpBlockEnd(std::string word, std::ifstream& config) {
 }
 
 void ConfigReader::onServerBlockEnd(std::string word, std::ifstream& config) {
-  if (word == "#") {
+  if (word[0] == '#') {
     std::getline(config, word);
   } else if (word == "server") {
     _state = kServerBlockStart;
@@ -285,7 +292,7 @@ void ConfigReader::readFile() {
         onServerBlockEnd(word, i);
         break;
       case kEnd:
-        if (word == "#") {
+        if (word[0] == '#') {
           std::getline(i, word);
         } else {
           _state = kDead;

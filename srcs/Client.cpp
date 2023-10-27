@@ -25,7 +25,7 @@ const bool&                       Client::getHasEof(void) const { return _has_eo
 
 HttpRequest&                      Client::lastRequest(void) {
   std::vector<HttpRequest>::iterator  it = _reqs.end(); --it;
-  return *it;
+  return *it;//_reqs.end()--; 해도될거같아요.
 }
 
 void                              Client::clearBuf(void) {
@@ -35,7 +35,7 @@ void                              Client::clearBuf(void) {
 
 void                              Client::addBuf(const char* buf, size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    _buf.push_back(buf[i]);
+    _buf.push_back(buf[i]);//insert 로 바꾸는게 빠를거같아요.
   }
 }
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
@@ -69,7 +69,7 @@ const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
   std::vector<char> sub_buf;
 
   for (size_t i = start;i < end; ++i) {
-    sub_buf.push_back(_buf[i]);
+    sub_buf.push_back(_buf[i]);//insert가 더 빠를거같아요. 
   }
   return sub_buf;
 }
