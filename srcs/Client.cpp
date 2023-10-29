@@ -2,7 +2,8 @@
 
 Client::Client() : _read_idx(0), _port(-1) {}
 
-Client::Client(int port) : _read_idx(0), _port(port) {}
+Client::Client(int port, time_t last_request_time, time_t timeout_interval) 
+  : _read_idx(0), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
 
 Client& Client::operator=(const Client& other) {
   if (this == &other)
@@ -13,19 +14,22 @@ Client& Client::operator=(const Client& other) {
   _ress = other._ress;
   _has_eof = other._has_eof;
   _port = other._port;
+  _last_request_time = other._last_request_time;
+  _timeout_interval = other._timeout_interval;
   return *this;
 }
 
 const int&                        Client::getPort(void) const { return _port; }
 const std::vector<char>&          Client::getBuf(void) const { return _buf; }
 const size_t&                     Client::getReadIdx(void) const { return _read_idx; }
-const std::vector<HttpRequest>&   Client::getReqs(void) const { return _reqs; }
-const std::vector<HttpResponse>&  Client::getRess(void) const { return _ress; }
-const bool&                       Client::getHasEof(void) const { return _has_eof; }
+const std::queue<HttpRequest>&    Client::getReqs(void) const { return _reqs; }
+const std::queue<HttpResponse>&   Client::getRess(void) const { return _ress; }
+const bool&                       Client::getEof(void) const { return _has_eof; }
+const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
+const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
 
-HttpRequest&                      Client::lastRequest(void) {
-  std::vector<HttpRequest>::iterator  it = _reqs.end(); --it;
-  return *it;
+HttpRequest&                      Client::backRequest(void) {
+  return _reqs.back();
 }
 
 void                              Client::clearBuf(void) {
@@ -35,14 +39,15 @@ void                              Client::clearBuf(void) {
 
 void                              Client::addBuf(const char* buf, size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    _buf.push_back(buf[i]);
+    _buf.push_back(buf[i]);//insert 로 바꾸는게 빠를거같아요.
   }
 }
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
-void                              Client::addReqs(HttpRequest& req) { _reqs.push_back(req); }
-void                              Client::addRess(HttpResponse& res) { _ress.push_back(res); }
-void                              Client::clearRess(void) {_ress.clear(); }
-void                              Client::setHasEof(bool has_eof) { _has_eof = has_eof; }
+void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
+void                              Client::addRess(HttpResponse& res) { _ress.push(res); }
+void                              Client::popReqs(void) { _reqs.pop(); }
+void                              Client::popRess(void) { _ress.pop(); }
+void                              Client::setEof(bool has_eof) { _has_eof = has_eof; }
 
 int                               Client::headerEndIdx(const size_t& start) {
   size_t idx = start;
@@ -57,7 +62,7 @@ int                               Client::headerEndIdx(const size_t& start) {
         if (_buf[j] == '\r') {
           if (flag) flag = false;
           else break ;
-        } else if (_buf[j] == '\n') return idx + 1;
+        } else if (_buf[j] == '\n') return (idx + 1) - _read_idx;
         else break ;
       }
     }
@@ -69,7 +74,15 @@ const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
   std::vector<char> sub_buf;
 
   for (size_t i = start;i < end; ++i) {
-    sub_buf.push_back(_buf[i]);
+    sub_buf.push_back(_buf[i]);//insert가 더 빠를거같아요. 
   }
   return sub_buf;
+}
+
+void Client::setLastRequestTime(const time_t& last_request_time) {
+  _last_request_time = last_request_time;
+}
+
+void Client::setTimeoutInterval(const time_t& timeout_interval) {
+  _timeout_interval = timeout_interval;
 }

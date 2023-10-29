@@ -7,6 +7,23 @@
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
 
+
+// #include <iterator>
+// void  __test_printReq(HttpRequest& r){
+//   std::cout << r.getMethod() << " " << r.getHost() << ": "<< r.getLocation() << "?" << r.getQueries() << " HTTP" << r.getHttpMajor() << "/" << r.getHttpMinor() << std::endl;
+//   std::map<std::string, std::string>::const_iterator i = r.getHeaders().begin();
+//   for(; i != r.getHeaders().end(); i++){
+//     std::cout << i->first << " : " << i->second << std::endl;
+//   }
+//   const std::vector<char> j  = r.getEntity();
+//   for (size_t k = 0; k < j.size(); k++){
+//     std::cout << j[k];
+//   }
+//   std::cout << std::endl;
+// }
+
+
+
 Server::Server(const char* configure_file) {
   std::cout << "Server constructing : " << configure_file << std::endl;
   ConfigReader reader(configure_file);
@@ -27,7 +44,7 @@ void Server::setSocketOption(int socket_fd) {
     setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
 }
 
-void Server::change_events(std::vector<struct kevent>& change_list,
+void Server::changeEvents(std::vector<struct kevent>& change_list,
                            uintptr_t ident, int16_t filter, uint16_t flags,
                            uint32_t fflags, intptr_t data, void* udata) {
   struct kevent tmp;
@@ -36,14 +53,14 @@ void Server::change_events(std::vector<struct kevent>& change_list,
   change_list.push_back(tmp);
 }
 
-void Server::handle_error_kevent(int fd) {
+void Server::handleErrorKevent(int fd) {
   if (_server_sockets.find(fd) != _server_sockets.end())
     throw std::runtime_error("Error: server socket error.");
   std::cerr << "client socket error" << std::endl;
-  disconnect_client(fd);
+  disconnectClient(fd);
 }
 
-void Server::disconnect_client(const int client_fd) {
+void Server::disconnectClient(const int client_fd) {
   std::cout << "Client disconnected: " << client_fd << std::endl;
   close(client_fd);
   _clients.erase(client_fd);
@@ -59,34 +76,30 @@ void Server::connectClient(int server_socket) {
   setSocketOption(client_socket);
   std::cout << "accept new client: " << client_socket << std::endl;
 
-  change_events(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
+  changeEvents(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                 0, NULL);
-  change_events(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
+  changeEvents(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
                 0, 0, NULL);
-  _clients[client_socket] = Client(_server_sockets[server_socket]);
+  _clients[client_socket] = Client(_server_sockets[server_socket], getTime(), KEEPALIVETIMEOUT);
 }
 
 void Server::sendHttpResponse(int client_fd) {
   Client& client = _clients[client_fd];
-  const std::vector<HttpResponse>& responses = client.getRess();
+  const std::queue<HttpResponse>& responses = client.getRess();
 
-  for (size_t i = 0; i < responses.size(); i++) {
-    std::string encoded_response = Encoder::execute(responses[i]);
+  while (responses.size() > 0) {
+    std::string encoded_response = Encoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, std::strlen(buf));
-    buf = &(responses[i].getBody())[0];
-    write(client_fd, buf, responses[i].getContentLength());
-    std::cout << "send" << std::endl;
+    buf = &(responses.front().getBody())[0];
+    write(client_fd, buf, responses.front().getContentLength());
+    client.popRess();
+    std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
+    if (buf) std::cout << buf << std::endl;
   }
-  client.clearRess();
-  if (client.getHasEof()) {
-    std::cout << "send eof" << std::endl;
-    disconnect_client(client_fd);
-  } else {
-    std::cout << "send alive" << std::endl;
-    change_events(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
+  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
-  }
+  if (client.getEof()) disconnectClient(client_fd);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -101,57 +114,68 @@ void Server::recvHttpRequest(int client_fd) {
     }
     if (n > 0) cli.addBuf(buf, n);
   }
-  if (n == 0) cli.setHasEof(true);
+  if (n == 0) cli.setEof(true);
 
   int idx;
   if (cli.getReqs().size() > 0) {
-    HttpRequest&  last_request = cli.lastRequest();
+    HttpRequest&  last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
-
       if (!last_request.getEntityArrived()) return ;
       HttpResponse res;
-
-      // res.publish(last_request);
+      try{
+        res.publish(last_request, findRouteRule(last_request, client_fd));
+      } catch (Host::NoRouteRuleException &e) {
+        res.publishError(404);
+        std::cout << e.what() << std::endl;
+      }
       cli.addRess(res);
+      cli.popReqs();
       cli.addReadIdx(idx);
     }
   }
 
-  while ((idx = cli.headerEndIdx(cli.getReadIdx())) != -1) { // header 읽기 (\r\n\r\n)
+  while ((idx = cli.headerEndIdx(cli.getReadIdx())) >= 0) { // header 읽기 (\r\n\r\n)
     HttpRequest             req;
     HttpDecoder             hd;
-    size_t                  size = idx - cli.getReadIdx();
-    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), idx);
-
-      hd.setCallback(
-          NULL, HttpRequest::sParseUrl,
-          NULL, HttpRequest::sSaveHeaderField,
-          HttpRequest::sParseHeaderValue, HttpRequest::sSaveRquestData,
-          NULL, NULL,
-          NULL, NULL);
-      hd.setDataSpace(static_cast<void*>(&req));
+    size_t                  size = static_cast<size_t>(idx);
+    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
+    cli.addReadIdx(size);
+    hd.setCallback(
+        NULL, HttpRequest::sParseUrl,
+        NULL, HttpRequest::sSaveHeaderField,
+        HttpRequest::sParseHeaderValue, HttpRequest::sSaveRquestData,
+        NULL, NULL,
+        NULL, NULL);
+    hd.setDataSpace(static_cast<void*>(&req));
 
     if (hd.execute(&(data)[0], size) == size) {
-
-      cli.addReadIdx(idx);
+      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
       cli.addReqs(req);
-
-      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         HttpResponse res;
-
-        // res.publish(req); // req --> res
+        try{
+          res.publish(req, findRouteRule(req, client_fd));
+        } catch (Host::NoRouteRuleException &e) {
+          res.publishError(404);
+          std::cout << e.what() << std::endl;
+        } 
+        cli.popReqs();
         cli.addRess(res);
       }
+    } else {
+      HttpResponse res;
+      cli.setEof(true);
+      res.publishError(400);
+      cli.addRess(res);
     }
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
-  if (cli.getRess().size() > 0) change_events(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  if (cli.getRess().size() > 0) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
@@ -186,10 +210,11 @@ void Server::init(void) {
       throw std::runtime_error("Error: bind failed.");
     if (listen(socket_fd, BACKLOG) == -1)
       throw std::runtime_error("Error: listen fail.");
-    change_events(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
+    changeEvents(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                   0, NULL);
     it++;
   }
+  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
 }
 
 void Server::run(void) {
@@ -205,13 +230,16 @@ void Server::run(void) {
     for (int i = 0; i < new_event; ++i) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
-        handle_error_kevent(curr_event->ident);
+        handleErrorKevent(curr_event->ident);
       } else if (curr_event->flags & EV_EOF) {  
-        disconnect_client(curr_event->ident);
+        disconnectClient(curr_event->ident);
+      } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
+        checkTimeout();
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients.count(curr_event->ident)) {  // client read event
+          _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
         } else if (_cgi.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
@@ -221,4 +249,32 @@ void Server::run(void) {
       }
     }
   }
+}
+
+RouteRule Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
+  std::pair<std::string, int> key(req.getHost(), _clients[client_fd].getPort());
+  if (_hosts.count(key))
+    return (_hosts[key].getRouteRule(req.getLocation()));
+  else
+    return ( _default_host.getRouteRule(req.getLocation()));
+}
+
+time_t Server::getTime(void) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec;
+}
+
+void      Server::checkTimeout(void){
+  std::vector<int> disconnect_list;
+
+  std::map<int, Client>::iterator it = _clients.begin();
+  for (; it != _clients.end(); it++) {
+    if (getTime() - it->second.getLastRequestTime() > it->second.getTimeoutInterval()) {
+      disconnect_list.push_back(it->first);
+    }
+  }
+
+  for (size_t i = 0; i < disconnect_list.size(); i++)
+    disconnectClient(disconnect_list[i]);
 }

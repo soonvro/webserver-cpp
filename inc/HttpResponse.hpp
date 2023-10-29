@@ -3,10 +3,14 @@
 
 #include "HttpDecoder.hpp"
 #include "HttpRequest.hpp"
+#include "RouteRule.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
+#include <iostream>
+
+#define BUF_SIZE 4096
 
 class HttpResponse {
   private:
@@ -25,6 +29,11 @@ class HttpResponse {
 
     // body
     std::vector<char>                         _body;
+
+    void                                      readFile(const std::string& path);
+    void                                      readDir(const std::string& path);
+
+  //  const static std::map<std::string, std::string> contentTypes;
 
   public:
     HttpResponse();
@@ -49,7 +58,26 @@ class HttpResponse {
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const std::vector<char>& body);
 
-    // bool                                      publish(const HttpRequest& req);
+    void                                      addContentLength(void);
+    void                                      publish(const HttpRequest& req, const RouteRule& r);
+    void                                      publishError(int status);
+    void                                      setHeader(const std::string& key, const std::string& value); 
+
+    class FileNotFoundException : public std::exception {
+      public: 
+        const char* what() const throw() { return "File not found!"; }
+    };
 };
+
+// const std::map<std::string, std::string> HttpResponse::contentTypes = {
+//                                                               {".html", "text/html"},
+//                                                               {".css", "text/css"},
+//                                                               {".js", "application/javascript"},
+//                                                               {".png", "image/png"},
+//                                                               {".jpg", "image/jpeg"},
+//                                                               {".jpeg", "image/jpeg"},
+//                                                               {".gif", "image/gif"},
+//                                                               {".json", "application/json"},
+//                                                           };
 
 #endif

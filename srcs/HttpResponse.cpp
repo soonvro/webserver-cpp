@@ -1,4 +1,41 @@
+#include <fstream>
+#include <dirent.h>
+#include <sstream>
 #include "HttpResponse.hpp"
+
+void                                      HttpResponse::readFile(const std::string& path){
+  std::ifstream i(path);
+  if (i.fail()){
+      throw FileNotFoundException();
+  }
+  char buf[BUF_SIZE];
+  while (true){
+    i.read(buf, BUF_SIZE);
+    _body.insert(_body.end(), buf, buf + i.gcount());
+    if (i.eof()){
+      break ;
+    }
+    if (i.fail()){
+      throw FileNotFoundException();
+    }
+  }
+  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  // _headers["Content-Type"]에 path의 확장자에 따라서 적절한 값을 넣어줘야함.
+  _headers["Content-Type"] = "text/html";
+}
+
+void                                      HttpResponse::readDir(const std::string& path){
+  DIR* dir = opendir((path).c_str());
+  struct dirent* entry;
+  if (dir == nullptr){
+    throw FileNotFoundException();
+  }
+  while ((entry = readdir(dir)) != nullptr) {
+    _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
+    _body.push_back('\n');
+  }
+}
+
 
 HttpResponse::HttpResponse() : _http_major(0), _http_minor(0), _status(0), _content_length(0), _is_chunked(false) {}
 
@@ -22,52 +59,72 @@ void                                      HttpResponse::setContentLength(unsigne
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
 
-// bool                                      HttpResponse::publish(const HttpRequest& req) {
-//   if (req.getHeaderArrived() && req.getEntityArrived()) {
-//     _http_major = req.getHttpMajor();
-//     _http_minor = req.getHttpMinor();
+void                                      HttpResponse::addContentLength(void) {
+  std::stringstream ss;
+  ss << _body.size();
+  _headers["Content-Length"] = ss.str();
+  _content_length = _body.size();
+}
 
-//     // location
-//     const std::string&  loc = req.getLocation();
-//     std::ifstream       ifs;
-//     std::stringstream   ss("");
+void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
+    const std::string& location = req.getLocation();
+    _headers["Content-Type"] = "text/html";
+    _headers["Connection"] = "keep-alive";
+    try{
+    if (!(rule.getAcceptedMethods() & (1 << req.getMethod())))
+      _status = 403;
+    else if (rule.getMaxClientBodySize() != 0 &&
+        rule.getMaxClientBodySize() < req.getEntity().size())
+      _status = 413;
+    else if (rule.getRedirection().first) {
+      _status = rule.getRedirection().first;
+      if (300 <= _status && _status < 400)
+        _headers["Location"] = rule.getRedirection().second;
+      else
+        _body.assign(rule.getRedirection().second.begin(), rule.getRedirection().second.end());
+      addContentLength();
+      return ;
+    } else if (location[location.size() - 1] == '/') {
+      if (rule.getIndexPage().size()) {
+        _status = 200;
+        readFile(rule.getRoot() + "/" + rule.getIndexPage());
+      } else if (rule.getAutoIndex()){
+        _status = 200;
+        readDir(rule.getRoot() + location);
+      } else{
+        _status = 404;
+      }
+    }else{
+      _status = 200;
+      readFile(rule.getRoot() + location);
+    }
+    } catch (FileNotFoundException &e){
+      std::cout << "requested url not found" << std::endl;
+      std::cout << e.what() << std::endl;
+      if (rule.hasErrorPage(_status)) {
+        try{
+          readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
+        } catch (FileNotFoundException &e){
+          std::cout << "configured error page not found" << std::endl;
+          std::cout << e.what() << std::endl;
+          publishError(404);
+        }
+      } else{
+        publishError(404);
+      }
+    }
+    addContentLength();
+}
 
-//     if (loc == "/") { // root
-//       ifs.open("index.html");
-//       if (ifs.fail()) throw std::runtime_error("can't read file."); // 오류 처리 생각해봐야 함. 50x ?
+void                                      HttpResponse::publishError(int status){
+  _status = status;
+  std::stringstream ss;
+  ss << _status;
+  std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
+  _body.assign(body_str.begin(), body_str.end());
+  _headers["Content-Type"] = "text/html";
+  _headers["Connection"] = "keep-alive";
+  addContentLength();
+}
 
-//       ss << ifs.rdbuf();
-      
-//       char  c;
-//       while (ss.get(c)) { _body.push_back(c); }
-//       ss.str(""); // stringstream 초기화
-
-//       _content_length = _body.size();
-//       ss << _content_length; // buff size
-
-//       _status = 200;
-//       _status_message = "OK";
-//       _headers["Content-Type"] = "text/html";
-//       _headers["Content-Length"] = ss.str();
-//     } else {
-//       ifs.open("404.html");
-//       if (ifs.fail()) throw std::runtime_error("can't read file."); // 오류 처리 생각해봐야 함. 50x ?
-
-//       ss << ifs.rdbuf();
-      
-//       char  c;
-//       while (ss.get(c)) { _body.push_back(c); }
-//       ss.str(""); // stringstream 초기화
-
-//       _content_length = _body.size();
-//       ss << _content_length; // buff size
-
-//       _status = 400;
-//       _status_message = "Bad Request";
-//       _headers["Content-Type"] = "text/html";
-//       _headers["Content-Length"] = ss.str();
-//     }
-//     return true;
-//   }
-//     return false;
-// }
+void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }

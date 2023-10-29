@@ -11,7 +11,7 @@ const char* g_case_ok[] = {
 //   "GET / HTTP/1.1\n\n",
 //   "GET / HTTP/1.1\n\r\n",
 //   "GET / HTTP/1.1\r\n\n",
-//   "GET / HTTP/1.1\r\nHost: naver.com\n\n",
+   "GET / HTTP/1.1\r\nHost: naver.com\n\n",
 //   "GET /index.html HTTP/1.1\r\n\n",
 //   "GET http://www.naver.com HTTP/1.1\r\n\n",
 //   "GET http://www.naver.com:4242 HTTP/1.1\r\n\n",
@@ -134,3 +134,8 @@ void test_HttpDecoder(void) {
   for (int i = 0; i < static_cast<int>(sizeof(g_case_failure)/sizeof(g_case_failure[0])); i++)
     doTest(g_case_failure[i]);
 }
+
+// int main() {
+//   test_HttpDecoder();
+
+// }

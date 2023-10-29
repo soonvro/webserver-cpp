@@ -6,6 +6,7 @@
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <exception>
@@ -21,7 +22,7 @@
 #define BUF_SIZE 4096
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
-#define KEEPALIVETIMEOUT 65
+#define KEEPALIVETIMEOUT 60
 
 class Server {
  private:
@@ -37,22 +38,28 @@ class Server {
   std::map<int, Client>                       _clients;
   std::map<int, std::string>                  _cgi;  // value 바꿔야함.
 
-  void setSocketOption(int socket_fd);
+  void      setSocketOption(int socket_fd);
 
-  void change_events(std::vector<struct kevent> &change_list, uintptr_t ident,
+  void      changeEvents(std::vector<struct kevent> &change_list, uintptr_t ident,
                      int16_t filter, uint16_t flags, uint32_t fflags,
                      intptr_t data, void *udata);
 
-  void handle_error_kevent(int ident);
-  void disconnect_client(const int client_fd);
+  void      handleErrorKevent(int ident);
+  void      disconnectClient(const int client_fd);
 
-  void connectClient(int server_socket);
+  void      connectClient(int server_socket);
 
-  void sendHttpResponse(int client_fd);
+  void      sendHttpResponse(int client_fd);
 
-  void recvHttpRequest(int client_fd);
+  void      recvHttpRequest(int client_fd);
 
-  void recvCgiResponse(int cgi_fd);
+  void      recvCgiResponse(int cgi_fd);
+
+  RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);
+
+  time_t    getTime(void);  //return seconds
+  void      checkTimeout(void);
+
 
  public:
   Server(const char *configure_file);
