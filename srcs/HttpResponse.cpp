@@ -63,6 +63,7 @@ void                                      HttpResponse::addContentLength(void) {
   std::stringstream ss;
   ss << _body.size();
   _headers["Content-Length"] = ss.str();
+  _content_length = _body.size();
 }
 
 void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
@@ -98,10 +99,14 @@ void                                      HttpResponse::publish(const HttpReques
       readFile(rule.getRoot() + location);
     }
     } catch (FileNotFoundException &e){
+      std::cout << "requested url not found" << std::endl;
+      std::cout << e.what() << std::endl;
       if (rule.hasErrorPage(_status)) {
         try{
           readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
         } catch (FileNotFoundException &e){
+          std::cout << "configured error page not found" << std::endl;
+          std::cout << e.what() << std::endl;
           publishError(404);
         }
       } else{

@@ -7,6 +7,23 @@
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
 
+
+// #include <iterator>
+// void  __test_printReq(HttpRequest& r){
+//   std::cout << r.getMethod() << " " << r.getHost() << ": "<< r.getLocation() << "?" << r.getQueries() << " HTTP" << r.getHttpMajor() << "/" << r.getHttpMinor() << std::endl;
+//   std::map<std::string, std::string>::const_iterator i = r.getHeaders().begin();
+//   for(; i != r.getHeaders().end(); i++){
+//     std::cout << i->first << " : " << i->second << std::endl;
+//   }
+//   const std::vector<char> j  = r.getEntity();
+//   for (size_t k = 0; k < j.size(); k++){
+//     std::cout << j[k];
+//   }
+//   std::cout << std::endl;
+// }
+
+
+
 Server::Server(const char* configure_file) {
   std::cout << "Server constructing : " << configure_file << std::endl;
   ConfigReader reader(configure_file);
@@ -78,6 +95,7 @@ void Server::sendHttpResponse(int client_fd) {
     write(client_fd, buf, responses.front().getContentLength());
     client.popRess();
     std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
+    if (buf) std::cout << buf << std::endl;
   }
   changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
                   NULL);
