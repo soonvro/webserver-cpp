@@ -41,7 +41,7 @@ class Client {
     void                              addBuf(const char* buf, size_t size);
     void                              addReadIdx(size_t idx);
     void                              addReqs(HttpRequest& req);
-    Client::                          addRess(void);
+    Client&                           addRess(void);
 
     void                              eraseBuf(void);
     void                              popReqs(void);

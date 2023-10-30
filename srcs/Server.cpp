@@ -130,10 +130,11 @@ void Server::recvHttpRequest(int client_fd) {
       try{
         RouteRule rule = findRouteRule(last_request, client_fd);
         if (rule.getIsCgi()) {
-          res.initializeCgiProcess();
+          res.initializeCgiProcess(last_request, rule);
           _cgi_responses[res.getCgiPipeIn()] = &res;
           changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-          res.cgiExecute();
+          int cgi_pid = res.cgiExecute();
+          changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
         } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
           res.publish(last_request, rule);
         } else {
@@ -269,7 +270,9 @@ void Server::run(void) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
         handleErrorKevent(curr_event->ident);
-      } else if (curr_event->flags & EV_EOF) {  
+      } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
+        waitpid(curr_event->ident, NULL, WNOHANG);
+      } else if (curr_event->flags & EV_EOF) {  // socket disconnect event
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();

@@ -52,6 +52,7 @@ const bool&                               HttpResponse::getIsChunked() const { r
 const std::vector<char>&                  HttpResponse::getBody() const { return _body; }
 const bool&                               HttpResponse::getIsReady() const { return _is_ready; }
 const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
+const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipe(); }
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -140,3 +141,12 @@ void                                      HttpResponse::publishError(int status)
 }
 
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
+
+void HttpResponse::initializeCgiProcess(
+    HttpRequest& req, RouteRule& rule) throw(std::runtime_error) {
+  _cgi_handler = CgiHandler(req, rule);
+}
+
+int HttpResponse::cgiExecute(void) throw(std::runtime_error) {
+  return _cgi_handler.execute();
+}

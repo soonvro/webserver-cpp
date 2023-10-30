@@ -55,6 +55,7 @@ class HttpResponse {
     const std::vector<char>&                  getBody(void) const;
     const bool&                               getIsReady(void) const;
     const bool&                               getIsCgi(void) const;
+    const int&                                getCgiPipeIn(void) const;
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -71,6 +72,9 @@ class HttpResponse {
     void                                      publish(const HttpRequest& req, const RouteRule& r);
     void                                      publishError(int status);
     void                                      setHeader(const std::string& key, const std::string& value); 
+
+    void                                      initializeCgiProcess(HttpRequest& req, RouteRule& rule) throw(std::runtime_error);
+    int                                       cgiExecute(void) throw(std::runtime_error);
 
     class FileNotFoundException : public std::exception {
       public: 
