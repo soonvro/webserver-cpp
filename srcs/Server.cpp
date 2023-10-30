@@ -150,7 +150,6 @@ void Server::recvHttpRequest(int client_fd) {
         NULL, NULL,
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
-
     if (hd.execute(&(data)[0], size) == size) {
       idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
@@ -158,12 +157,14 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         HttpResponse res;
+        
         try{
           res.publish(req, findRouteRule(req, client_fd));
         } catch (Host::NoRouteRuleException &e) {
           res.publishError(404);
           std::cout << e.what() << std::endl;
-        } 
+        }
+        cli.eraseBuf();
         cli.popReqs();
         cli.addRess(res);
       }
