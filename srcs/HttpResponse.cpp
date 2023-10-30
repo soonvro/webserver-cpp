@@ -38,7 +38,8 @@ void                                      HttpResponse::readDir(const std::strin
 }
 
 
-HttpResponse::HttpResponse() : _http_major(0), _http_minor(0), _status(0), _content_length(0), _is_chunked(false) {}
+HttpResponse::HttpResponse() : _http_major(0), _http_minor(0), _status(0), \
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false) {}
 
 // Getters
 const unsigned short&                     HttpResponse::getHttpMajor() const { return _http_major; }
@@ -49,6 +50,7 @@ const std::map<std::string, std::string>& HttpResponse::getHeader() const { retu
 const unsigned long long&                 HttpResponse::getContentLength() const { return _content_length; }
 const bool&                               HttpResponse::getIsChunked() const { return _is_chunked; }
 const std::vector<char>&                  HttpResponse::getBody() const { return _body; }
+const bool&                               HttpResponse::getIsReady() const { return _is_ready; }
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -59,6 +61,7 @@ void                                      HttpResponse::setHeaders(const std::ma
 void                                      HttpResponse::setContentLength(unsigned long long content_length) { _content_length = content_length; }
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
+void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 
 void                                      HttpResponse::addContentLength(void) {
   std::stringstream ss;
@@ -71,6 +74,7 @@ void                                      HttpResponse::publish(const HttpReques
     const std::string& location = req.getLocation();
     _headers["Content-Type"] = "text/html";
     _headers["Connection"] = "keep-alive";
+    _is_ready = true;
     try{
     if (!(rule.getAcceptedMethods() & (1 << req.getMethod())))
       _status = 403;
@@ -129,6 +133,7 @@ void                                      HttpResponse::publishError(int status)
   _body.assign(body_str.begin(), body_str.end());
   _headers["Content-Type"] = "text/html";
   _headers["Connection"] = "keep-alive";
+  _is_ready = true;
   addContentLength();
 }
 
