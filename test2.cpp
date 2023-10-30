@@ -2,17 +2,21 @@
 using namespace std;
 #include <iostream>
 #include <string>
+#include <sstream>
 int main(){
-  vector<char> a;
-  a.push_back('1');
-  a.push_back('2');
-  a.push_back('3');
-  a.push_back('4');
-  a.push_back('5');
-  a.push_back('6');
-  a.push_back('7');
-  std::string s = &(a[0]);
-  std::cout << s;
+  string s = "Content-Type: text/html\n\na";
+  stringstream ss(s);
+  string line;
+  getline(ss, line);
+  cout << "1" << line << endl;
+  getline(ss, line);
+  
+  cout << "2" << line << endl;
+  getline(ss, line);
+  cout << "3"<< line << endl;
+  getline(ss, line);
+  cout << "4" << line << endl;
+
 
   return 0;
 }

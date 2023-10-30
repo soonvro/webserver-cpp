@@ -6,6 +6,7 @@
 
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
+#include "CgiResponse.hpp"
 
 
 // #include <iterator>
@@ -145,8 +146,8 @@ void Server::recvHttpRequest(int client_fd) {
         res.publishError(404);
         std::cout << e.what() << std::endl;
       }
+      cli.eraseBuf();
       cli.popReqs();
-      cli.addReadIdx(idx);
     }
   }
 
@@ -186,7 +187,6 @@ void Server::recvHttpRequest(int client_fd) {
           res.publishError(404);
           std::cout << e.what() << std::endl;
         }
-        cli.eraseBuf();
         cli.popReqs();
       }
     } else {
@@ -194,6 +194,7 @@ void Server::recvHttpRequest(int client_fd) {
       cli.setEof(true);
       res.publishError(400);
     }
+    cli.eraseBuf();
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
   if (cli.getRess().front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -214,29 +215,19 @@ void Server::recvCgiResponse(int cgi_fd) {
   if (n != 0) return ;
   cgi_handler.closeReadPipe();
   res.setIsReady(true);
+  //enable write event
+  //delete cgi_handler from _cgi_handler
+  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  _cgi_responses.erase(cgi_fd);
 
   //cgi response 생성
-  //decoder 실행
+  std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
+  CgiResponse cgi_response(cgi_response_str);
 
-  // std::cout << "cgi response: " << cgi_response << std::endl;
-  //1. document-response = Content-Type [ Status ] *other-field NL response-body
-  //헤더 그대로 붙여서 보내기
-  //2. local-redir-response = local-Location NL
-  //3. lient-redir-response = client-Location *extension-field NL
-  //302 found 
-  //4. lient-redirdoc-response = client-Location Status Content-Type *other-field NL response-body
-  //302 found 
-  //status: digit message ;
-  //location header 
-  //entity 추가
   
   
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
-  //enable write event
-  //delete cgi_handler from _cgi_handler
-  _cgi_responses.erase(cgi_fd);
-  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::init(void) {
