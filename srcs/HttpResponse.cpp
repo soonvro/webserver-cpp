@@ -2,6 +2,7 @@
 #include <dirent.h>
 #include <sstream>
 #include "HttpResponse.hpp"
+#include "HttpDecoderEnums.h"
 
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
@@ -87,23 +88,27 @@ void                                      HttpResponse::publish(const HttpReques
     } else if (location[location.size() - 1] == '/') {
       if (rule.getIndexPage().size()) {
         _status = 200;
-        readFile(rule.getRoot() + "/" + rule.getIndexPage());
+      if (!(req.getMethod() & HPS::kHEAD))
+          readFile(rule.getRoot() + "/" + rule.getIndexPage());
       } else if (rule.getAutoIndex()){
         _status = 200;
-        readDir(rule.getRoot() + location);
+      if (!(req.getMethod() & HPS::kHEAD))
+          readDir(rule.getRoot() + location);
       } else{
         _status = 404;
       }
     }else{
       _status = 200;
-      readFile(rule.getRoot() + location);
+      if (!(req.getMethod() & HPS::kHEAD))
+        readFile(rule.getRoot() + location);
     }
     } catch (FileNotFoundException &e){
       std::cout << "requested url not found" << std::endl;
       std::cout << e.what() << std::endl;
       if (rule.hasErrorPage(_status)) {
         try{
-          readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
+            if (!(req.getMethod() & HPS::kHEAD))
+            readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
         } catch (FileNotFoundException &e){
           std::cout << "configured error page not found" << std::endl;
           std::cout << e.what() << std::endl;
