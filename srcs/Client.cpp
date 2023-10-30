@@ -27,6 +27,7 @@ const std::queue<HttpResponse>&   Client::getRess(void) const { return _ress; }
 const bool&                       Client::getEof(void) const { return _has_eof; }
 const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
 const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
+HttpResponse&                     Client::backRess(void) { return _ress.back(); }
 
 HttpRequest&                      Client::backRequest(void) {
   return _reqs.back();
@@ -44,7 +45,7 @@ void                              Client::addBuf(const char* buf, size_t size) {
 }
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
 void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
-void                              Client::addRess(HttpResponse& res) { _ress.push(res); }
+Client&                           Client::addRess(void) { _ress.push(HttpResponse()); return *this; }
 void                              Client::eraseBuf(void) { _buf.erase(_buf.begin(), _buf.begin() + _read_idx); _read_idx = 0; }
 void                              Client::popReqs(void) { _reqs.pop(); }
 void                              Client::popRess(void) { _ress.pop(); }

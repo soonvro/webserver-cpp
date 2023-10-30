@@ -4,6 +4,7 @@
 #include "HttpDecoder.hpp"
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
+#include "CgiHandler.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -30,6 +31,10 @@ class HttpResponse {
     // body
     std::vector<char>                         _body;
 
+    bool                                      _is_ready;
+    bool                                      _is_cgi;
+    CgiHandler                                _cgi_handler;
+
     void                                      readFile(const std::string& path);
     void                                      readDir(const std::string& path);
 
@@ -48,6 +53,9 @@ class HttpResponse {
     const unsigned long long&                 getContentLength(void) const;
     const bool&                               getIsChunked(void) const;
     const std::vector<char>&                  getBody(void) const;
+    const bool&                               getIsReady(void) const;
+    const bool&                               getIsCgi(void) const;
+    CgiHandler&                               getCgiHandler(void);
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -57,6 +65,8 @@ class HttpResponse {
     void                                      setContentLength(unsigned long long content_length);
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const std::vector<char>& body);
+    void                                      setIsReady(bool is_ready);
+    void                                      setIsCgi(bool is_cgi);
 
     void                                      addContentLength(void);
     void                                      publish(const HttpRequest& req, const RouteRule& r);

@@ -18,6 +18,7 @@
 
 #include "Client.hpp"
 #include "Host.hpp"
+#include "CgiHandler.hpp"
 
 #define BUF_SIZE 4096
 #define BACKLOG 512
@@ -36,7 +37,8 @@ class Server {
   std::vector<struct kevent>                  _change_list;
 
   std::map<int, Client>                       _clients;
-  std::map<int, std::string>                  _cgi;  // value 바꿔야함.
+  std::map<int, HttpResponse*>                _cgi_responses;  //<pipe_in_fd, pointer to response>
+  //cgi PIDs
 
   void      setSocketOption(int socket_fd);
 

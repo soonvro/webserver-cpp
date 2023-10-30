@@ -32,6 +32,7 @@ class Client {
     const int&                        getPort(void) const;
     const time_t&                     getLastRequestTime() const;
     const time_t&                     getTimeoutInterval() const;
+    HttpResponse&                     backRess(void);
 
     HttpRequest&                      backRequest(void);
 
@@ -40,7 +41,7 @@ class Client {
     void                              addBuf(const char* buf, size_t size);
     void                              addReadIdx(size_t idx);
     void                              addReqs(HttpRequest& req);
-    void                              addRess(HttpResponse& res);
+    Client&                           addRess(void);
 
     void                              eraseBuf(void);
     void                              popReqs(void);

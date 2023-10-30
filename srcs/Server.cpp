@@ -6,6 +6,7 @@
 
 #include "ConfigReader.hpp"
 #include "Encoder.hpp"
+#include "CgiResponse.hpp"
 
 
 // #include <iterator>
@@ -88,6 +89,7 @@ void Server::sendHttpResponse(int client_fd) {
   const std::queue<HttpResponse>& responses = client.getRess();
 
   while (responses.size() > 0) {
+    if (!responses.front().getIsReady()) break ;
     std::string encoded_response = Encoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, std::strlen(buf));
@@ -124,15 +126,27 @@ void Server::recvHttpRequest(int client_fd) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
-      HttpResponse res;
+      HttpResponse& res = cli.addRess().backRess();
       try{
-        res.publish(last_request, findRouteRule(last_request, client_fd));
-      } catch (Host::NoRouteRuleException &e) {
+        RouteRule rule = findRouteRule(last_request, client_fd);
+        if (rule.getIsCgi()) {
+          // res.initializeCgiProcess();
+          // _cgi_responses[res.getCgiPipeIn()] = &res;
+          // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+          // res.cgiExecute();
+        } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
+          res.publish(last_request, rule);
+        } else {
+          res.publishError(405);
+        }
+      } catch (Host::NoRouteRuleException &e) { 
+        res.publishError(404);
+        std::cout << e.what() << std::endl;
+      } catch (Host::NoRouteRuleException &e) { 
         res.publishError(404);
         std::cout << e.what() << std::endl;
       }
       cli.eraseBuf();
-      cli.addRess(res);
       cli.popReqs();
     }
   }
@@ -156,32 +170,64 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReqs(req);
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
-        HttpResponse res;
-        
+      HttpResponse& res = cli.addRess().backRess();
         try{
-          res.publish(req, findRouteRule(req, client_fd));
+          RouteRule rule = findRouteRule(req, client_fd);
+          if (rule.getIsCgi()) {
+            // res.initializeCgiProcess();
+            // _cgi_responses[res.getCgiPipeIn()] = &res;
+            // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+            // res.cgiExecute();
+          } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
+            res.publish(req, rule);
+          } else {
+            res.publishError(405);
+          }
         } catch (Host::NoRouteRuleException &e) {
           res.publishError(404);
           std::cout << e.what() << std::endl;
         }
         cli.popReqs();
-        cli.addRess(res);
       }
     } else {
-      HttpResponse res;
+      HttpResponse& res = cli.addRess().backRess();
       cli.setEof(true);
       res.publishError(400);
-      cli.addRess(res);
     }
     cli.eraseBuf();
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
-  if (cli.getRess().size() > 0) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  if (cli.getRess().front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
-  cgi_fd++;
-  std::cout << cgi_fd;
+  char    buf[BUF_SIZE] = {0,};
+  HttpResponse& res = *_cgi_responses[cgi_fd];
+  CgiHandler& cgi_handler = res.getCgiHandler();
+
+  int n;
+  while ((n = read(cgi_fd, buf, BUF_SIZE)) != 0) {
+    if (n == -1) {
+      throw std::runtime_error("Error: read error.");
+    }
+    if (n > 0) cgi_handler.addBuf(buf, n);
+  }
+  if (n != 0) return ;
+  cgi_handler.closeReadPipe();
+  res.setIsReady(true);
+  //enable write event
+  //delete cgi_handler from _cgi_handler
+  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  _cgi_responses.erase(cgi_fd);
+
+  //cgi response 생성
+  std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
+  CgiResponse cgi_response(cgi_response_str);
+
+  
+  
+  res.setHeader("Connection", "keep-alive");
+  res.addContentLength();
 }
 
 void Server::init(void) {
@@ -242,7 +288,7 @@ void Server::run(void) {
         } else if (_clients.count(curr_event->ident)) {  // client read event
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
-        } else if (_cgi.count(curr_event->ident)) {  // cgi read event
+        } else if (_cgi_responses.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
