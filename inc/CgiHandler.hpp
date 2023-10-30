@@ -15,11 +15,19 @@ class CgiHandler {
     void execute(void);
 
     const int& getReadPipe(void) const;
+    const int&          getClientFd(void) const;
+    const std::vector<char>& getBuf(void) const;
+
+    void addBuf(const char* buf, size_t size);
+    void closeReadPipe(void);
+
   private:
     int       _pipe_fd[2];
 
     HttpRequest _req;
     RouteRule _route_rule;
+    std::vector<char> _buf;
+    int               _client_fd;
 };
 
 

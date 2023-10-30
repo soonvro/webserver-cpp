@@ -55,6 +55,7 @@ class HttpResponse {
     const std::vector<char>&                  getBody(void) const;
     const bool&                               getIsReady(void) const;
     const bool&                               getIsCgi(void) const;
+    CgiHandler&                               getCgiHandler(void);
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);

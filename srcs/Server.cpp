@@ -125,15 +125,14 @@ void Server::recvHttpRequest(int client_fd) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
-      ;
       HttpResponse& res = cli.addRess().backRess();
       try{
         RouteRule rule = findRouteRule(last_request, client_fd);
         if (rule.getIsCgi()) {
-          res.initializeCgiProcess();
-          _cgi_responses[res.getCgiPipeIn()] = &res;
-          changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-          res.cgiExecute();
+          // res.initializeCgiProcess();
+          // _cgi_responses[res.getCgiPipeIn()] = &res;
+          // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+          // res.cgiExecute();
         } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
           res.publish(last_request, rule);
         } else {
@@ -170,15 +169,14 @@ void Server::recvHttpRequest(int client_fd) {
       cli.addReqs(req);
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
-        HttpResponse res;
-        
+      HttpResponse& res = cli.addRess().backRess();
         try{
           RouteRule rule = findRouteRule(req, client_fd);
           if (rule.getIsCgi()) {
-            CgiHandler cgi_handler(req, rule);
-            _cgi_handler[cgi_handler.getReadPipe()] = cgi_handler;
-            changeEvents(_change_list, cgi_handler.getReadPipe(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-            cgi_handler.execute();
+            // res.initializeCgiProcess();
+            // _cgi_responses[res.getCgiPipeIn()] = &res;
+            // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+            // res.cgiExecute();
           } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
             res.publish(req, rule);
           } else {
@@ -190,13 +188,11 @@ void Server::recvHttpRequest(int client_fd) {
         }
         cli.eraseBuf();
         cli.popReqs();
-        cli.addRess(res);
       }
     } else {
-      HttpResponse res;
+      HttpResponse& res = cli.addRess().backRess();
       cli.setEof(true);
       res.publishError(400);
-      cli.addRess(res);
     }
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
@@ -204,21 +200,43 @@ void Server::recvHttpRequest(int client_fd) {
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
-  cgi_fd++;
-  std::cout << cgi_fd;
+  char    buf[BUF_SIZE] = {0,};
+  HttpResponse& res = *_cgi_responses[cgi_fd];
+  CgiHandler& cgi_handler = res.getCgiHandler();
 
-  //read pipe
+  int n;
+  while ((n = read(cgi_fd, buf, BUF_SIZE)) != 0) {
+    if (n == -1) {
+      throw std::runtime_error("Error: read error.");
+    }
+    if (n > 0) cgi_handler.addBuf(buf, n);
+  }
+  if (n != 0) return ;
+  cgi_handler.closeReadPipe();
+  res.setIsReady(true);
 
-  //if eof
-  //close pipe
+  //cgi response 생성
+  //decoder 실행
 
-  //make response
-  //set response done true
+  // std::cout << "cgi response: " << cgi_response << std::endl;
+  //1. document-response = Content-Type [ Status ] *other-field NL response-body
+  //헤더 그대로 붙여서 보내기
+  //2. local-redir-response = local-Location NL
+  //3. lient-redir-response = client-Location *extension-field NL
+  //302 found 
+  //4. lient-redirdoc-response = client-Location Status Content-Type *other-field NL response-body
+  //302 found 
+  //status: digit message ;
+  //location header 
+  //entity 추가
   
-  //delete cgi_handler from _cgi_handler
+  
+  res.setHeader("Connection", "keep-alive");
+  res.addContentLength();
   //enable write event
-  //else return
-
+  //delete cgi_handler from _cgi_handler
+  _cgi_responses.erase(cgi_fd);
+  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::init(void) {
@@ -279,7 +297,7 @@ void Server::run(void) {
         } else if (_clients.count(curr_event->ident)) {  // client read event
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
-        } else if (_cgi_handler.count(curr_event->ident)) {  // cgi read event
+        } else if (_cgi_responses.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
