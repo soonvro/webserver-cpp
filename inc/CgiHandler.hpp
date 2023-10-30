@@ -13,7 +13,7 @@ class CgiHandler {
     CgiHandler& operator=(const CgiHandler& other);
 
     void execute(void);
-    
+
     const int& getReadPipe(void) const;
   private:
     int       _pipe_fd[2];

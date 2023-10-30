@@ -125,14 +125,15 @@ void Server::recvHttpRequest(int client_fd) {
       idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
-      HttpResponse res;
+      ;
+      HttpResponse& res = cli.addRess().backRess();
       try{
         RouteRule rule = findRouteRule(last_request, client_fd);
         if (rule.getIsCgi()) {
-          CgiHandler cgi_handler(last_request, rule);
-          _cgi_handler[cgi_handler.getReadPipe()] = cgi_handler;
-          changeEvents(_change_list, cgi_handler.getReadPipe(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-          cgi_handler.execute();
+          res.initializeCgiProcess();
+          _cgi_responses[res.getCgiPipeIn()] = &res;
+          changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+          res.cgiExecute();
         } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
           res.publish(last_request, rule);
         } else {
@@ -141,8 +142,10 @@ void Server::recvHttpRequest(int client_fd) {
       } catch (Host::NoRouteRuleException &e) { 
         res.publishError(404);
         std::cout << e.what() << std::endl;
+      } catch (Host::NoRouteRuleException &e) { 
+        res.publishError(404);
+        std::cout << e.what() << std::endl;
       }
-      cli.addRess(res);
       cli.popReqs();
       cli.addReadIdx(idx);
     }

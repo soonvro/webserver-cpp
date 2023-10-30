@@ -37,7 +37,7 @@ class Server {
   std::vector<struct kevent>                  _change_list;
 
   std::map<int, Client>                       _clients;
-  std::map<int, CgiHandler>                  _cgi_handler;  
+  std::map<int, HttpResponse*>                _cgi_responses;  //<pipe_in_fd, pointer to response>
   //cgi PIDs
 
   void      setSocketOption(int socket_fd);
