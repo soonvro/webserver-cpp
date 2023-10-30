@@ -42,6 +42,7 @@ class Client {
     void                              addReqs(HttpRequest& req);
     void                              addRess(HttpResponse& res);
 
+    void                              eraseBuf(void);
     void                              popReqs(void);
     void                              popRess(void);
     void                              setEof(bool has_eof);

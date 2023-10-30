@@ -45,6 +45,7 @@ void                              Client::addBuf(const char* buf, size_t size) {
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
 void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
 void                              Client::addRess(HttpResponse& res) { _ress.push(res); }
+void                              Client::eraseBuf(void) { _buf.erase(_buf.begin(), _buf.begin() + _read_idx); _read_idx = 0; }
 void                              Client::popReqs(void) { _reqs.pop(); }
 void                              Client::popRess(void) { _ress.pop(); }
 void                              Client::setEof(bool has_eof) { _has_eof = has_eof; }
