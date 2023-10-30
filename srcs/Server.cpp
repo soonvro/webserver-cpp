@@ -138,7 +138,7 @@ void Server::recvHttpRequest(int client_fd) {
         } else {
           res.publishError(405);
         }
-      } catch (Host::NoRouteRuleException &e) {
+      } catch (Host::NoRouteRuleException &e) { 
         res.publishError(404);
         std::cout << e.what() << std::endl;
       }

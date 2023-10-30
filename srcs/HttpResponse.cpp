@@ -51,6 +51,7 @@ const unsigned long long&                 HttpResponse::getContentLength() const
 const bool&                               HttpResponse::getIsChunked() const { return _is_chunked; }
 const std::vector<char>&                  HttpResponse::getBody() const { return _body; }
 const bool&                               HttpResponse::getIsReady() const { return _is_ready; }
+const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -62,6 +63,7 @@ void                                      HttpResponse::setContentLength(unsigne
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
 void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
+void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 
 void                                      HttpResponse::addContentLength(void) {
   std::stringstream ss;

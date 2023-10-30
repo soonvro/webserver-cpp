@@ -54,6 +54,7 @@ class HttpResponse {
     const bool&                               getIsChunked(void) const;
     const std::vector<char>&                  getBody(void) const;
     const bool&                               getIsReady(void) const;
+    const bool&                               getIsCgi(void) const;
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -64,6 +65,7 @@ class HttpResponse {
     void                                      setIsChunked(bool is_chunked);
     void                                      setBody(const std::vector<char>& body);
     void                                      setIsReady(bool is_ready);
+    void                                      setIsCgi(bool is_cgi);
 
     void                                      addContentLength(void);
     void                                      publish(const HttpRequest& req, const RouteRule& r);
