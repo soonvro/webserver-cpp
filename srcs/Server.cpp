@@ -131,9 +131,9 @@ void Server::recvHttpRequest(int client_fd) {
         res.publishError(404);
         std::cout << e.what() << std::endl;
       }
+      cli.eraseBuf();
       cli.addRess(res);
       cli.popReqs();
-      cli.addReadIdx(idx);
     }
   }
 
@@ -164,7 +164,6 @@ void Server::recvHttpRequest(int client_fd) {
           res.publishError(404);
           std::cout << e.what() << std::endl;
         }
-        cli.eraseBuf();
         cli.popReqs();
         cli.addRess(res);
       }
@@ -174,6 +173,7 @@ void Server::recvHttpRequest(int client_fd) {
       res.publishError(400);
       cli.addRess(res);
     }
+    cli.eraseBuf();
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
   if (cli.getRess().size() > 0) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
