@@ -204,9 +204,27 @@ void Server::recvCgiResponse(int cgi_fd) {
   //cgi response 생성
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
   CgiResponse cgi_response(cgi_response_str);
-  if (cgi_response.getType())
-  
-  
+  const CgiType &cgi_type = cgi_response.getType();
+  if (cgi_type == kDocument){
+    res.setStatusMessage("OK");
+  } else if ( cgi_type == kClientRedirDoc || cgi_type == kClientRedir){
+    res.setStatusMessage("Found");
+  } else if (cgi_type == kLocalRedir){
+    res.setIsReady(false);
+    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
+    // res.initializeCgiProcess();
+    // _cgi_responses[res.getCgiPipeIn()] = &res;
+    // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    // res.cgiExecute();
+    return ;
+  } else {
+    throw std::runtime_error("Error: cgi error.");
+  }
+  res.setStatus(cgi_response.getStatus());
+  res.setBody(cgi_response.getBody());
+  res.addContentLength();
+  res.setHeader("Content-Type", cgi_response.getContentType());
+  res.setHeader("Location", cgi_response.getLocation());
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
 }

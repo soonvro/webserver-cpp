@@ -15,18 +15,18 @@ class CgiResponse{
   public:
     CgiResponse(std::string& s);
 
-    const std::string&                        getContentType(void) const;
-    const std::string&                        getLocation(void) const;
-    const std::string&                        getBody(void) const;
-    const CgiType&                          getType(void) const;
-    const std::string&                        getStatusCode(void) const;
-    const std::map<std::string, std::string>& getHeaders(void) const;
+    const std::string&                              getContentType(void) const;
+    const std::string&                              getLocation(void) const;
+    const std::vector<char>&                        getBody(void) const;
+    const CgiType&                                  getType(void) const;
+    const unsigned short&                           getStatus(void) const;
+    const std::map<std::string, std::string>&       getHeaders(void) const;
 
   private:
     std::map<std::string, std::string> _headers;
-    std::string _body;
+    std::vector<char> _body;
     CgiType _type;
-    std::string _status_code;
+    unsigned short _status;
 };
 
 #endif

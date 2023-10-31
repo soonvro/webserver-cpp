@@ -25,8 +25,8 @@ const std::string&                        CgiResponse::getLocation(void) const {
   return "";
 }
 
-const std::string&                        CgiResponse::getBody(void) const { return _body; }
-const CgiType&                          CgiResponse::getType(void) const { return _type; }
-const std::string&                        CgiResponse::getStatusCode(void) const { return _status_code; }
+const std::vector<char>&                  CgiResponse::getBody(void) const { return _body; }
+const CgiType&                            CgiResponse::getType(void) const { return _type; }
+const unsigned short&                     CgiResponse::getStatus(void) const { return _status; }
 const std::map<std::string, std::string>& CgiResponse::getHeaders(void) const { return _headers; }
 
