@@ -40,7 +40,6 @@ void CgiHandler::setPipe(void) throw(std::runtime_error) {
 
   if (pipe(_pipe_to_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
 }
-
 void CgiHandler::setupCgiEnvp(void) {
   setenv("SERVER_SOFTWARE", "webserv/1.0", 1);
 
@@ -50,26 +49,30 @@ void CgiHandler::setupCgiEnvp(void) {
   if (_req.getEntityArrived()) {
     ss << _req.getEntity().size();
     setenv("CONTENT_LENGTH", ss.str().c_str(), 1);
+  } else{
+    setenv("CONTENT_LENGTH", "0", 1);
   }
   std::string content_type = _req.getHeaderValue("content-type");
   setenv("CONTENT_TYPE", (content_type.empty() ? DEFAULT_CONTENT_TYPE : content_type.c_str()), 1);
+  setenv("REDIRECT_STATUS", "CGI", 1);
+  setenv("GATEWAY_INTERFACE",  "CGI/1.1", 1);
+  setenv("REMOTE_ADDR", "127.0.0.1", 1);
 
   setenv("REQUEST_METHOD", methods[_req.getMethod() - 1], 1);
   setenv("QUERY_STRING", _req.getQueries().c_str(), 1);
 
   setenv("SCRIPT_NAME", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  setenv("PATH_INFO", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  setenv("REQUEST_URI", (_route_rule.getRoot() + _req.getLocation() + "?" + _req.getQueries()).c_str(), 1);
 
   setenv("SERVER_NAME", _server_name.c_str(), 1);
   ss << _port;
   setenv("SERVER_PORT", ss.str().c_str(), 1);
   setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
 }
-
 int CgiHandler::execute(void) throw(std::runtime_error) {
   pid_t pid = fork();
-
   if (pid == -1) throw std::runtime_error("error: fork error!");
-
   if (pid == 0) {  // Child process
       close(_pipe_from_cgi_fd[PIPE_READ]);
       dup2(_pipe_from_cgi_fd[PIPE_WRITE], STDOUT_FILENO);
@@ -80,7 +83,9 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
 
       this->setupCgiEnvp();
 
-      if (execve(_route_rule.getCgiPath().c_str(), NULL, NULL) == -1) {
+      char* argv[2] = {NULL};
+      extern char** environ;
+      if (execve(_route_rule.getCgiPath().c_str(), argv, environ) == -1) {
         exit(EXIT_FAILURE);
       }
       return 0;  //  This part is actually not reached.

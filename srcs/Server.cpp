@@ -197,13 +197,14 @@ void Server::recvCgiResponse(int cgi_fd) {
 
   int n;
   while ((n = read(cgi_fd, buf, BUF_SIZE)) != 0) {
+    sleep(1);
     if (n == -1) {
       throw std::runtime_error("Error: read error.");
     }
     if (n > 0) cgi_handler.addBuf(buf, n);
-    if (n < BUF_SIZE) break ;
   }
   if (n != 0) return ;
+  std::cout << "buf :" << buf << std::endl;
   cgi_handler.closeReadPipe();
   res.setIsReady(true);
   //enable write event
