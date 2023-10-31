@@ -1,9 +1,9 @@
-#include "Encoder.hpp"
+#include "HttpEncoder.hpp"
 #include "HttpResponse.hpp"
 #include <iterator>
 
 
-std::string Encoder::execute(const HttpResponse& res){
+std::string HttpEncoder::execute(const HttpResponse& res){
   std::stringstream ss;
   std::string encoded_response = "HTTP/";
   ss << res.getHttpMajor() << "." << res.getHttpMinor();

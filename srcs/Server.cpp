@@ -204,7 +204,9 @@ void Server::recvCgiResponse(int cgi_fd) {
   //cgi response 생성
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
   CgiResponse cgi_response(cgi_response_str);
-
+  //send 1
+  //client redirect 3, 4(with body)
+  //server redirect 2
   
   
   res.setHeader("Connection", "keep-alive");
