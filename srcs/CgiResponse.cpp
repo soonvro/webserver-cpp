@@ -5,12 +5,40 @@ CgiResponse::CgiResponse(std::string& s){
   std::stringstream ss(s);
   std::string line;
 
-
   getline(ss, line);
-  std::stringstream ss2(line);
-  std::string word;
-  ss2 >> word;
-
+  std::stringstream ss_one_line(line);
+  std::string key;
+  std::string value;
+  ss_one_line >> key >> value;
+  if (key == "Content-Type:") {
+    _type = kDocument;
+    _headers["Content-Type"] = value;
+  } else if (key == "Location:") {
+    _headers["Location"] = value;
+    if (key[0] == '/') {
+      _type = kLocalRedir;
+    }
+    else {
+      _type = kClientRedir;
+    }
+  } else {
+    throw std::runtime_error("invalid cgi response");
+  }
+  //get other header
+  while (1){
+    getline(ss, line);
+    if (line == "")
+      break;
+    ss_one_line.str(line);
+    ss_one_line >> key >> value;
+    key.pop_back();
+    _headers[key] = value;
+    if (ss.eof())
+      return ;
+  }
+  //get body
+  ss >> line;
+  _body.assign(line.begin(), line.end());
 }
 
 const std::string&                        CgiResponse::getContentType(void) const { 
