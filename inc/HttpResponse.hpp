@@ -73,8 +73,9 @@ class HttpResponse {
     void                                      publishError(int status);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
-    void                                      initializeCgiProcess(HttpRequest& req, RouteRule& rule) throw(std::runtime_error);
-    int                                       cgiExecute(void) throw(std::runtime_error);
+    void initializeCgiProcess(HttpRequest& req, RouteRule& rule,
+                              const std::string& server_name, const int& port) throw(std::runtime_error);
+    int  cgiExecute(void) throw(std::runtime_error);
 
     class FileNotFoundException : public std::exception {
       public: 

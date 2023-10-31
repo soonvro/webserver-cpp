@@ -1,15 +1,19 @@
 #ifndef CGI_HANDLER_HPP_
 #define CGI_HANDLER_HPP_
 
+#include <unistd.h>
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
 
 #define DEFAULT_CONTENT_TYPE "text/html"
+#define PIPE_READ  0
+#define PIPE_WRITE 1
 
 class CgiHandler {
   public:
     CgiHandler();
-    CgiHandler(HttpRequest& req, RouteRule& route_rule) throw(std::runtime_error);
+    CgiHandler(HttpRequest& req, RouteRule& route_rule,
+               const std::string& server_name, const int& port) throw(std::runtime_error);
     CgiHandler(const CgiHandler& other);
     CgiHandler& operator=(const CgiHandler& other);
 
@@ -26,6 +30,8 @@ class CgiHandler {
 
     HttpRequest _req;
     RouteRule _route_rule;
+    std::string _server_name;
+    int         _port;
 };
 
 

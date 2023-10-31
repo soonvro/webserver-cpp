@@ -130,7 +130,7 @@ void Server::recvHttpRequest(int client_fd) {
       try{
         RouteRule rule = findRouteRule(last_request, client_fd);
         if (rule.getIsCgi()) {
-          res.initializeCgiProcess(last_request, rule);
+          res.initializeCgiProcess(last_request, rule, last_request.getHost(), _clients[client_fd].getPort());
           _cgi_responses[res.getCgiPipeIn()] = &res;
           changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
           int cgi_pid = res.cgiExecute();
@@ -272,6 +272,7 @@ void Server::run(void) {
         handleErrorKevent(curr_event->ident);
       } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
         waitpid(curr_event->ident, NULL, WNOHANG);
+        if (curr_event->data == EXIT_FAILURE) disconnectClient(curr_event->ident);
       } else if (curr_event->flags & EV_EOF) {  // socket disconnect event
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
