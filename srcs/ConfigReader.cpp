@@ -137,7 +137,7 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
         } else if (word == "cgi_root") {
           if (config >> word && word.back() == ';' && r.getCgiPath() == "") {
-            word.pop_back();
+            word.pop_back(); 
             r.setCgiPath(word);
           } else {
             _state = kDead;

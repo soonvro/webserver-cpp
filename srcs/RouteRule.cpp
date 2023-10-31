@@ -7,7 +7,8 @@ RouteRule::RouteRule()
       _redirection(std::make_pair(0, "")),
       _autoIndex(false),
       _max_client_body_size(0),
-      _isCgi(false) {}
+      _isCgi(false),
+      _cgiPath("") {}
 
 RouteRule::RouteRule(const RouteRule& other)
    : _route(other._route),
