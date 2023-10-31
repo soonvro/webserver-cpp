@@ -40,7 +40,7 @@ void Server::changeEvents(std::vector<struct kevent>& change_list,
 void Server::handleErrorKevent(int fd) {
   if (_server_sockets.find(fd) != _server_sockets.end())
     throw std::runtime_error("Error: server socket error.");
-  std::cerr << "client socket error" << std::endl;
+  std::cout << "Client socket error" << std::endl;
   disconnectClient(fd);
 }
 
@@ -82,9 +82,9 @@ void Server::sendHttpResponse(int client_fd) {
     std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
     if (buf) std::cout << buf << std::endl;
   }
-  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
-                  NULL);
   if (client.getEof()) disconnectClient(client_fd);
+  else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
+                  NULL);
 }
 
 void Server::recvHttpRequest(int client_fd) {

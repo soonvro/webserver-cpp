@@ -23,7 +23,7 @@
 #define BUF_SIZE 4096
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
-#define KEEPALIVETIMEOUT 60
+#define KEEPALIVETIMEOUT 65
 
 class Server {
  private:
