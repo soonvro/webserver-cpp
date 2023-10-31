@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "ConfigReader.hpp"
-#include "Encoder.hpp"
+#include "HttpEncoder.hpp"
 #include "CgiResponse.hpp"
 
 Server::Server(const char* configure_file) {
@@ -15,6 +15,8 @@ Server::Server(const char* configure_file) {
   _hosts = reader.getHosts();
   _default_host = reader.getDefaultHost();
 }
+
+Server::~Server() {}
 
 void Server::setSocketOption(int socket_fd) {
     int is_reuseaddr = 1;
@@ -71,7 +73,7 @@ void Server::sendHttpResponse(int client_fd) {
 
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
-    std::string encoded_response = Encoder::execute(responses.front());
+    std::string encoded_response = HttpEncoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
@@ -120,9 +122,6 @@ void Server::recvHttpRequest(int client_fd) {
         } else {
           res.publishError(405);
         }
-      } catch (Host::NoRouteRuleException &e) { 
-        res.publishError(404);
-        std::cout << e.what() << std::endl;
       } catch (Host::NoRouteRuleException &e) { 
         res.publishError(404);
         std::cout << e.what() << std::endl;
@@ -178,7 +177,8 @@ void Server::recvHttpRequest(int client_fd) {
     cli.eraseBuf();
   }
   std::cout << "response size: " << cli.getRess().size() << std::endl;
-  if (cli.getRess().front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
+    changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::recvCgiResponse(int cgi_fd) {
@@ -223,8 +223,11 @@ void Server::recvCgiResponse(int cgi_fd) {
   res.setStatus(cgi_response.getStatus());
   res.setBody(cgi_response.getBody());
   res.addContentLength();
-  res.setHeader("Content-Type", cgi_response.getContentType());
-  res.setHeader("Location", cgi_response.getLocation());
+  const std::map<std::string, std::string>& headers = cgi_response.getHeaders();
+  if (headers.find("Content-Type") != headers.end())
+    res.setHeader("Content-Type", headers.find("Content-Type")->second);
+  if (headers.find("Location") != headers.end())
+    res.setHeader("Location", headers.find("Location")->second);
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
 }

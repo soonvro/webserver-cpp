@@ -2,7 +2,6 @@
 #define CGI_HANDLER_HPP_
 
 #include "HttpRequest.hpp"
-#include "HttpResponse.hpp"
 #include "RouteRule.hpp"
 
 class CgiHandler {

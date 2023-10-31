@@ -41,18 +41,6 @@ CgiResponse::CgiResponse(std::string& s){
   _body.assign(line.begin(), line.end());
 }
 
-const std::string&                        CgiResponse::getContentType(void) const { 
-  if (_headers.find("Content-Type") != _headers.end())
-    return _headers.find("Content-Type")->second;
-  return "";
-}
-
-const std::string&                        CgiResponse::getLocation(void) const { 
-  if (_headers.find("Location") != _headers.end())
-    return _headers.find("Location")->second;
-  return "";
-}
-
 const std::vector<char>&                  CgiResponse::getBody(void) const { return _body; }
 const CgiType&                            CgiResponse::getType(void) const { return _type; }
 const unsigned short&                     CgiResponse::getStatus(void) const { return _status; }

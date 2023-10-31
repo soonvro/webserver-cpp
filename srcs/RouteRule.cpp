@@ -9,6 +9,38 @@ RouteRule::RouteRule()
       _max_client_body_size(0),
       _isCgi(false) {}
 
+RouteRule::RouteRule(const RouteRule& other)
+   : _route(other._route),
+     _location(other._location),
+     _accepted_methods(other._accepted_methods),
+     _redirection(other._redirection),
+     _autoIndex(other._autoIndex),
+     _index_page(other._index_page),
+     _error_pages(other._error_pages),
+     _is_client_body_size_set(other._is_client_body_size_set),
+     _max_client_body_size(other._max_client_body_size),
+     _isCgi(other._isCgi),
+     _cgiPath(other._cgiPath) {}
+
+RouteRule& RouteRule::operator=(const RouteRule& other) {
+  if (this == &other)
+    return *this;
+  _route = other._route;
+  _location = other._location;
+  _accepted_methods = other._accepted_methods;
+  _redirection = other._redirection;
+  _autoIndex = other._autoIndex;
+  _index_page = other._index_page;
+  _error_pages = other._error_pages;
+  _is_client_body_size_set = other._is_client_body_size_set;
+  _max_client_body_size = other._max_client_body_size;
+  _isCgi = other._isCgi;
+  _cgiPath = other._cgiPath;
+  return *this;
+}
+
+
+
 const std::string&                  RouteRule::getRoute() const { return _route; }
 const std::string&                  RouteRule::getLocation() const { return _location; }
 int                                 RouteRule::getAcceptedMethods() const { return _accepted_methods; }

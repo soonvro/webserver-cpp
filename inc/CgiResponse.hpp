@@ -16,8 +16,6 @@ class CgiResponse{
   public:
     CgiResponse(std::string& s);
 
-    const std::string&                              getContentType(void) const;
-    const std::string&                              getLocation(void) const;
     const std::vector<char>&                        getBody(void) const;
     const CgiType&                                  getType(void) const;
     const unsigned short&                           getStatus(void) const;

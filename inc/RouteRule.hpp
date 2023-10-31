@@ -24,6 +24,8 @@ class RouteRule {
 
  public:
   RouteRule();
+  RouteRule(const RouteRule& other);
+  RouteRule& operator=(const RouteRule& other);
 
   bool hasRedirection(int code) const;
   void addRedirection(int code, const std::string& url);
