@@ -1,4 +1,6 @@
 #include <sstream>
+#include <cctype>
+#include <algorithm>
 #include "HttpRequest.hpp"
 
 /******************************************************************************/
@@ -25,6 +27,12 @@ const bool&                               HttpRequest::getIsChunked() const { re
 const std::vector<char>                   HttpRequest::getEntity() const { return _entity; }
 const bool&                               HttpRequest::getHeaderArrived() const { return _header_arrived; }
 const bool&                               HttpRequest::getEntityArrived() const { return _entity_arrived; }
+const std::string                         HttpRequest::getHeaderValue(std::string h_field) const { 
+  std::map<std::string, std::string>::const_iterator iter = _headers.find(h_field);
+  if (iter != _headers.end())
+    return iter->second;
+  return std::string();
+}
 
 /******************************************************************************/
 /*                                   Private                                  */
@@ -44,6 +52,8 @@ bool HttpRequest::isStrCase(const char* lhs_start, unsigned int lhs_len,
   if (i < lhs_len || *rhs) return false;
   return true;
 }
+
+unsigned char HttpRequest::toLower(unsigned char c) { return tolower(c); }
 
 bool HttpRequest::parseUrl(
     HttpDecoder* hd, const char *at, unsigned int len) {
@@ -152,6 +162,7 @@ bool HttpRequest::recognizeHeaderField(
   }
   else {
     _last_headers_key.assign(at, len);
+    std::transform(_last_headers_key.begin(), _last_headers_key.end(), _last_headers_key.begin(), HttpRequest::toLower);
     _h_field = kHeaderNomal;
   }
   return true;
