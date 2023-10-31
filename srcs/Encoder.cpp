@@ -2,10 +2,15 @@
 #include "HttpResponse.hpp"
 #include <iterator>
 
+
 std::string Encoder::execute(const HttpResponse& res){
-  std::string encoded_response = "HTTP/1.1";
+  std::stringstream ss;
+  std::string encoded_response = "HTTP/";
+  ss << res.getHttpMajor() << "." << res.getHttpMinor();
+  encoded_response += ss.str();
   encoded_response += " ";
-  encoded_response += std::to_string(res.getStatus());
+  ss << res.getStatus();
+  encoded_response += ss.str();
   encoded_response += " ";
   encoded_response += res.getStatusMessage();
   encoded_response += "\r\n";
