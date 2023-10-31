@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <sstream>
 #include "CgiHandler.hpp"
+#include <unistd.h>
 
 CgiHandler::CgiHandler() {}
 
@@ -92,3 +93,10 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
   }
   return 0;
 }
+
+void  CgiHandler::addBuf(const char* buf, size_t size){ _buf.insert(_buf.end(), buf, buf + size); }
+
+void  CgiHandler::closeReadPipe(void){ close(_pipe_fd[0]); }
+
+const int&                CgiHandler::getClientFd(void) const{ return _client_fd; }
+const std::vector<char>&  CgiHandler::getBuf(void) const{ return _buf; }

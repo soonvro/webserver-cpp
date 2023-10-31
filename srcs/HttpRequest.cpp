@@ -10,7 +10,7 @@
 HttpRequest::HttpRequest() 
   : _h_field(kHeaderNo), _has_host(false),
     _is_chunked(false), _is_connection_keep_alive(false),
-  _is_connection_close(false), _is_content_length(false) {}
+  _is_connection_close(false), _is_content_length(false), _header_arrived(false), _entity_arrived(false) {}
 
 HttpRequest::~HttpRequest() {}
 
@@ -197,11 +197,6 @@ bool HttpRequest::parseHeaderValue(
 int HttpRequest::settingContent(const std::vector<char>& buf) {
   size_t i = 0;
 
-  if (_entity.size() == _content_length) {
-    _entity_arrived = true;
-    return i;
-  }
-
   for (; i < buf.size(); ++i) {
     if (_entity.size() == _content_length) {
       _entity_arrived = true;
@@ -210,5 +205,7 @@ int HttpRequest::settingContent(const std::vector<char>& buf) {
     _entity.push_back(buf[i]);
   }
 
+  if (_entity.size() == _content_length)
+    _entity_arrived = true;
   return i;
 }

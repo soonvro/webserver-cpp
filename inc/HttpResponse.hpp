@@ -56,6 +56,8 @@ class HttpResponse {
     const bool&                               getIsReady(void) const;
     const bool&                               getIsCgi(void) const;
     const int&                                getCgiPipeIn(void) const;
+    CgiHandler&                               getCgiHandler(void);
+
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);

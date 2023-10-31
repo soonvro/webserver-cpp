@@ -53,6 +53,7 @@ const std::vector<char>&                  HttpResponse::getBody() const { return
 const bool&                               HttpResponse::getIsReady() const { return _is_ready; }
 const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
 const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipe(); }
+CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -135,7 +136,11 @@ void                                      HttpResponse::publishError(int status)
   std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
   _body.assign(body_str.begin(), body_str.end());
   _headers["Content-Type"] = "text/html";
-  _headers["Connection"] = "keep-alive";
+  if (status == 400){
+    _headers["Connection"] = "close";
+  }else{
+    _headers["Connection"] = "keep-alive";
+  }
   _is_ready = true;
   addContentLength();
 }
