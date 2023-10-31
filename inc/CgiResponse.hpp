@@ -4,23 +4,28 @@
 #include <string>
 #include <map>
 
-enum CgiStatus{
-  kDocumentResponse,
-  kLocalRedirResponse,
-  kClientRedirResponse,
-  kClientRedirDocResponse
+enum CgiType{
+  kDocument,
+  kLocalRedir,
+  kClientRedir,
+  kClientRedirDoc
 };
 
 class CgiResponse{
   public:
     CgiResponse(std::string& s);
 
+    const std::string&                        getContentType(void) const;
+    const std::string&                        getLocation(void) const;
+    const std::string&                        getBody(void) const;
+    const CgiType&                          getType(void) const;
+    const std::string&                        getStatusCode(void) const;
+    const std::map<std::string, std::string>& getHeaders(void) const;
+
   private:
     std::map<std::string, std::string> _headers;
     std::string _body;
-    CgiStatus _status;
-    std::string _content_type;
-    std::string _location;
+    CgiType _type;
     std::string _status_code;
 };
 

@@ -1,7 +1,5 @@
 #include "CgiHandler.hpp"
 #include <unistd.h>
-// res.initializeCgiProcess();
-// CgiHandler cgi_handler(last_request, rule);
 
 
 void  CgiHandler::addBuf(const char* buf, size_t size){ _buf.insert(_buf.end(), buf, buf + size); }

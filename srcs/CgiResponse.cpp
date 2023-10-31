@@ -10,11 +10,23 @@ CgiResponse::CgiResponse(std::string& s){
   std::stringstream ss2(line);
   std::string word;
   ss2 >> word;
-  if (word == "Content-Type:"){
-    ss2 >> _content_type;
-  }else if (word == "Location:"){
-    ss2 >> _location;
-  }else{
-    //cgi error
-  }
+
 }
+
+const std::string&                        CgiResponse::getContentType(void) const { 
+  if (_headers.find("Content-Type") != _headers.end())
+    return _headers.find("Content-Type")->second;
+  return "";
+}
+
+const std::string&                        CgiResponse::getLocation(void) const { 
+  if (_headers.find("Location") != _headers.end())
+    return _headers.find("Location")->second;
+  return "";
+}
+
+const std::string&                        CgiResponse::getBody(void) const { return _body; }
+const CgiType&                          CgiResponse::getType(void) const { return _type; }
+const std::string&                        CgiResponse::getStatusCode(void) const { return _status_code; }
+const std::map<std::string, std::string>& CgiResponse::getHeaders(void) const { return _headers; }
+
