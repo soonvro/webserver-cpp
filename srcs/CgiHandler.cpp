@@ -40,6 +40,8 @@ void CgiHandler::setPipe(void) throw(std::runtime_error) {
 
   if (pipe(_pipe_to_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
 }
+
+#include <iostream>
 void CgiHandler::setupCgiEnvp(void) {
   setenv("SERVER_SOFTWARE", "webserv/1.0", 1);
 
@@ -62,7 +64,15 @@ void CgiHandler::setupCgiEnvp(void) {
   setenv("QUERY_STRING", _req.getQueries().c_str(), 1);
 
   setenv("SCRIPT_NAME", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  std::cerr << getenv("SCRIPT_NAME") << std::endl;
   setenv("PATH_INFO", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  std::cerr << getenv("PATH_INFO") << std::endl;
+  char current_dir[512];
+  getcwd(current_dir, 512);
+  std::string slash = "/";
+  setenv("PATH_TRANSLATED", (current_dir + slash + _route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  
+
   setenv("REQUEST_URI", (_route_rule.getRoot() + _req.getLocation() + "?" + _req.getQueries()).c_str(), 1);
 
   setenv("SERVER_NAME", _server_name.c_str(), 1);
