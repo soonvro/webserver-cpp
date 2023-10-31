@@ -65,7 +65,6 @@ class Server {
 
  public:
   Server(const char *configure_file);
-  ~Server();
 
   void init(void);
   void run(void);
