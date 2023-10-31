@@ -87,6 +87,15 @@ void Server::sendHttpResponse(int client_fd) {
                   NULL);
 }
 
+void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, int client_fd) {
+  res.initializeCgiProcess(req, rule, req.getHost(), _clients[client_fd].getPort());
+  _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
+  changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+  int cgi_pid = res.cgiExecute();
+  _cgi_responses_on_pid[cgi_pid] = &res;
+  changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
+}
+
 void Server::recvHttpRequest(int client_fd) {
   char    buf[BUF_SIZE] = {0,};
   Client& cli = _clients[client_fd];
@@ -113,10 +122,7 @@ void Server::recvHttpRequest(int client_fd) {
       try{
         RouteRule rule = findRouteRule(last_request, client_fd);
         if (rule.getIsCgi()) {
-          // res.initializeCgiProcess();
-          // _cgi_responses[res.getCgiPipeIn()] = &res;
-          // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-          // res.cgiExecute();
+          executeCgi(res, last_request, rule, client_fd);
         } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
           res.publish(last_request, rule);
         } else {
@@ -124,6 +130,9 @@ void Server::recvHttpRequest(int client_fd) {
         }
       } catch (Host::NoRouteRuleException &e) { 
         res.publishError(404);
+        std::cout << e.what() << std::endl;
+      } catch (std::runtime_error &e) { 
+        res.publishError(500);
         std::cout << e.what() << std::endl;
       }
       cli.eraseBuf();
@@ -154,10 +163,7 @@ void Server::recvHttpRequest(int client_fd) {
         try{
           RouteRule rule = findRouteRule(req, client_fd);
           if (rule.getIsCgi()) {
-            // res.initializeCgiProcess();
-            // _cgi_responses[res.getCgiPipeIn()] = &res;
-            // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-            // res.cgiExecute();
+            executeCgi(res, req, rule, client_fd);
           } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
             res.publish(req, rule);
           } else {
@@ -165,6 +171,9 @@ void Server::recvHttpRequest(int client_fd) {
           }
         } catch (Host::NoRouteRuleException &e) {
           res.publishError(404);
+          std::cout << e.what() << std::endl;
+        } catch (std::runtime_error &e) { 
+          res.publishError(500);
           std::cout << e.what() << std::endl;
         }
         cli.popReqs();
@@ -183,7 +192,7 @@ void Server::recvHttpRequest(int client_fd) {
 
 void Server::recvCgiResponse(int cgi_fd) {
   char    buf[BUF_SIZE] = {0,};
-  HttpResponse& res = *_cgi_responses[cgi_fd];
+  HttpResponse& res = *_cgi_responses_on_pipe[cgi_fd];
   CgiHandler& cgi_handler = res.getCgiHandler();
 
   int n;
@@ -192,6 +201,7 @@ void Server::recvCgiResponse(int cgi_fd) {
       throw std::runtime_error("Error: read error.");
     }
     if (n > 0) cgi_handler.addBuf(buf, n);
+    if (n < BUF_SIZE) break ;
   }
   if (n != 0) return ;
   cgi_handler.closeReadPipe();
@@ -199,7 +209,7 @@ void Server::recvCgiResponse(int cgi_fd) {
   //enable write event
   //delete cgi_handler from _cgi_handler
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
-  _cgi_responses.erase(cgi_fd);
+  _cgi_responses_on_pipe.erase(cgi_fd);
 
   //cgi response 생성
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
@@ -213,7 +223,7 @@ void Server::recvCgiResponse(int cgi_fd) {
     res.setIsReady(false);
     changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
     // res.initializeCgiProcess();
-    // _cgi_responses[res.getCgiPipeIn()] = &res;
+    // _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
     // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
     // res.cgiExecute();
     return ;
@@ -280,7 +290,14 @@ void Server::run(void) {
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
         handleErrorKevent(curr_event->ident);
-      } else if (curr_event->flags & EV_EOF) {  
+      } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
+        waitpid(curr_event->ident, NULL, WNOHANG);
+        if (curr_event->data == EXIT_FAILURE) {
+          HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
+          res.publishError(502);
+          changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+        }
+      } else if (curr_event->flags & EV_EOF) {  // socket disconnect event
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
@@ -290,7 +307,7 @@ void Server::run(void) {
         } else if (_clients.count(curr_event->ident)) {  // client read event
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
-        } else if (_cgi_responses.count(curr_event->ident)) {  // cgi read event
+        } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event

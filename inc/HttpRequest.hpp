@@ -30,6 +30,7 @@ class HttpRequest {
     const std::vector<char>                   getEntity(void) const;
     const bool&                               getHeaderArrived(void) const;
     const bool&                               getEntityArrived(void) const;
+    const std::string                         getHeaderValue(std::string h_field) const;
 
     int                                       settingContent(const std::vector<char>& buf);
 
@@ -54,6 +55,8 @@ class HttpRequest {
     }
 
   private:
+    static unsigned char                toLower(unsigned char c);
+
     bool                                isStrCase(const char* lhs_start, unsigned int lhs_len, const char* rhs);
 
     bool                                parseUrl(HttpDecoder* hd, const char *at, unsigned int len);
