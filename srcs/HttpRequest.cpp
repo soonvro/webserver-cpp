@@ -67,7 +67,7 @@ bool HttpRequest::parseUrl(
       case HPS::kUrlStart:
         if ((*at) == '/') {
           p_prev = at;
-          if (len == 1) _location.assign(p_prev, 1);
+          if (idx == len - 1) _location.assign(p_prev, 1);
           state = HPS::kUrlPath;
         }
         else if ((*at) == 'h' || (*at) == 'H') state = HPS::kUrlH;
@@ -91,6 +91,7 @@ bool HttpRequest::parseUrl(
         p_prev = NULL;
         if ((*at) == '/') {
           p_prev = at;
+          if (idx == len - 1) _location.assign(p_prev, 1);
           state = HPS::kUrlPath;
         }
         else if ((*at) == '?') state = HPS::kUrlQuery;
@@ -107,6 +108,7 @@ bool HttpRequest::parseUrl(
         p_prev = NULL;
         if ((*at) == '/') {
           p_prev = at;
+          if (idx == len - 1) _location.assign(p_prev, 1);
           state = HPS::kUrlPath;
         }
         else if ((*at) == '?') state = HPS::kUrlQuery;

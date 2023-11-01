@@ -31,9 +31,11 @@ void                                      HttpResponse::readDir(const std::strin
   if (dir == nullptr){
     throw FileNotFoundException();
   }
+  std::string br = "<br />";
   while ((entry = readdir(dir)) != nullptr) {
     _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
-    _body.push_back('\n');
+    _body.insert(_body.end(), br.begin(), br.end());
+
   }
 }
 

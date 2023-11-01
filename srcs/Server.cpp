@@ -8,6 +8,25 @@
 #include "HttpEncoder.hpp"
 #include "CgiResponse.hpp"
 
+
+#define DEBUGMOD 1
+
+void  printReq(const std::vector<char>& data){
+  if (!DEBUGMOD){
+    return ;
+  }
+  std::string req_data(data.begin(), data.end());
+  std::cout << "<< REQUEST MESSAGE >>\n" << req_data << '\n' << std::endl;
+}
+
+void  printRes(const char* data, size_t size){
+  if (!DEBUGMOD){
+    return ;
+  }
+  std::string res(data, data + size);
+  std::cout << "<< RESPONSE MESSAGE >>\n" << res << '\n' << std::endl;
+}
+
 Server::Server(const char* configure_file) {
   std::cout << "Server constructing : " << configure_file << std::endl;
   ConfigReader reader(configure_file);
@@ -78,12 +97,16 @@ void Server::sendHttpResponse(int client_fd) {
   Client& client = _clients[client_fd];
   const std::queue<HttpResponse>& responses = client.getRess();
 
+  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  std::cout << "n_res: " << responses.size() << std::endl;
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
     std::string encoded_response = HttpEncoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
+    printRes(buf, std::strlen(buf));
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
+    printRes(buf, responses.front().getContentLength());
     write(client_fd, buf, responses.front().getContentLength());
     client.popRess();
     std::cout << "response sent: client fd : " << client_fd << std::endl;
@@ -164,6 +187,7 @@ void Server::recvHttpRequest(int client_fd) {
         NULL, NULL,
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
+    printReq(data);
     if (hd.execute(&(data)[0], size) == size) {
       idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
@@ -190,6 +214,7 @@ void Server::recvHttpRequest(int client_fd) {
         cli.popReqs();
       }
     } else {
+      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
       HttpResponse& res = cli.addRess().backRess();
       cli.setEof(true);
       res.publishError(400);
