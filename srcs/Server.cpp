@@ -81,8 +81,7 @@ void Server::sendHttpResponse(int client_fd) {
     buf = &(responses.front().getBody())[0];
     write(client_fd, buf, responses.front().getContentLength());
     client.popRess();
-    std::cout << "response sent: client fd : [" << client_fd << "]\nHeader \n" << encoded_response.c_str() << std::endl;
-    if (buf) std::cout << buf << std::endl;
+    std::cout << "response sent: client fd : " << client_fd << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
   else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
@@ -95,7 +94,7 @@ void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, in
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   int cgi_pid = res.cgiExecute();
   _cgi_responses_on_pid[cgi_pid] = &res;
-  //changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
+  changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -111,6 +110,10 @@ void Server::recvHttpRequest(int client_fd) {
     if (n > 0) cli.addBuf(buf, n);
   }
   if (n == 0) cli.setEof(true);
+  if (n == 0 && cli.getBuf().empty()){
+    disconnectClient(client_fd);
+    return ;
+  }
 
   int idx;
   if (cli.getReqs().size() > 0) {
@@ -214,6 +217,8 @@ void Server::recvCgiResponse(int cgi_fd) {
   _cgi_responses_on_pipe.erase(cgi_fd);
 
   //cgi response 생성
+  buf[0] = 0;
+  cgi_handler.addBuf(buf, 1);
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
   CgiResponse cgi_response(cgi_response_str);
   const CgiType &cgi_type = cgi_response.getType();
@@ -222,15 +227,27 @@ void Server::recvCgiResponse(int cgi_fd) {
   } else if ( cgi_type == kClientRedirDoc || cgi_type == kClientRedir){
     res.setStatusMessage("Found");
   } else if (cgi_type == kLocalRedir){
-    res.setIsReady(false);
-    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
+    // res.setIsReady(false);
+    // changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
     // res.initializeCgiProcess();
     // _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
     // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
     // res.cgiExecute();
     return ;
   } else {
-    throw std::runtime_error("Error: cgi error.");
+    const RouteRule& rule = cgi_handler.getRouteRule();
+    if (rule.hasErrorPage(404)) {
+        try{
+          res.readFile(rule.getRoot() + "/" + rule.getErrorPage(404));
+        } catch (HttpResponse::FileNotFoundException &e){
+          std::cout << "configured error page not found" << std::endl;
+          std::cout << e.what() << std::endl;
+          res.publishError(404);
+        }
+    } else {
+      res.publishError(404);
+    }
+  
   }
   res.setStatus(cgi_response.getStatus());
   res.setBody(cgi_response.getBody());
@@ -289,21 +306,24 @@ void Server::run(void) {
     if (new_event == -1) throw std::runtime_error("Error: kevent fail.");
     _change_list.clear();
     for (int i = 0; i < new_event; ++i) {
+      std::cout << "New kevent :" << new_event << std::endl;
       curr_event = &event_list[i];
       if (curr_event->flags & EV_ERROR) {  // error event
+
         handleErrorKevent(curr_event->ident);
       } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
         waitpid(curr_event->ident, NULL, WNOHANG);
+        std::cout << "waitpid :" << curr_event->ident << std::endl;
         if (curr_event->data == EXIT_FAILURE) {
+          std::cout << "waitpid :" << curr_event->ident << std::endl;
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
           res.publishError(502);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
-      } else if (curr_event->flags & EV_EOF && _server_sockets.find(curr_event->ident) != _server_sockets.end()) {  // socket disconnect event
+      } else if (curr_event->flags & EV_EOF && _server_sockets.count(curr_event->ident)) {  // socket disconnect event
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
-        std::cout<< "";
-        // checkTimeout();
+        checkTimeout();
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
