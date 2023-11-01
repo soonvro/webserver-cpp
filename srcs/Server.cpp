@@ -11,20 +11,43 @@
 
 #define DEBUGMOD 1
 
-void  printReq(const std::vector<char>& data){
+void  printReq(const HttpRequest& req){
   if (!DEBUGMOD){
     return ;
   }
-  std::string req_data(data.begin(), data.end());
-  std::cout << "<< REQUEST MESSAGE >>\n" << req_data << '\n' << std::endl;
+  std::map<std::string, std::string>::const_iterator i = req.getHeaders().begin();
+  std::cout << "<< REQUEST MESSAGE >>\n";
+  if (req.getMethod() == HPS::kGET){
+    std::cout << "GET ";
+  }
+  if (req.getMethod() == HPS::kHEAD){
+    std::cout << "HEAD ";
+  }if (req.getMethod() == HPS::kPOST){
+    std::cout << "POST ";
+  }if (req.getMethod() == HPS::kDELETE){
+    std::cout << "DELETE ";
+  }
+  std::cout  << req.getHost() << \
+  req.getLocation() << "?" << req.getQueries()<< " HTTP/1.1" <<std::endl;
+  while (i != req.getHeaders().end()){
+    std::cout << i->first << ": " << i->second << std::endl;
+    i++;
+  }
+  std::cout << "Host: " << std::endl;
+  const std::vector<char>& entity = req.getEntity();
+  std::vector<char>::const_iterator j = entity.begin();
+  while (j != req.getEntity().end()){
+    std::cout << *j;
+  }
+  std::cout<< std::endl;
 }
 
-void  printRes(const char* data, size_t size){
+void  printRes(std::string header, const char* data, size_t size){
   if (!DEBUGMOD){
     return ;
   }
   std::string res(data, data + size);
-  std::cout << "<< RESPONSE MESSAGE >>\n" << res << '\n' << std::endl;
+  std::cout << "<< RESPONSE MESSAGE >>\n" << header << "\n\n" << res << '\n' << std::endl;
 }
 
 Server::Server(const char* configure_file) {
@@ -100,10 +123,9 @@ void Server::sendHttpResponse(int client_fd) {
     if (!responses.front().getIsReady()) break ;
     std::string encoded_response = HttpEncoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
-    printRes(buf, std::strlen(buf));
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
-    printRes(buf, responses.front().getContentLength());
+    printRes(encoded_response, &(responses.front().getBody())[0], responses.front().getContentLength());
     write(client_fd, buf, responses.front().getContentLength());
     client.popRess();
     std::cout << "response sent: client fd : " << client_fd << std::endl;
@@ -143,9 +165,11 @@ void Server::recvHttpRequest(int client_fd) {
 
   int idx;
   if (cli.getReqs().size() > 0) {
-    HttpRequest&  last_request = cli.backRequest();
+    HttpRequest& last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
+      printReq(last_request);
+
       try {
         idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
         cli.addReadIdx(idx);
@@ -192,7 +216,6 @@ void Server::recvHttpRequest(int client_fd) {
         NULL, NULL,
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
-    printReq(data);
     if (hd.execute(&(data)[0], size) == size) {
       try {
         idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
@@ -201,7 +224,7 @@ void Server::recvHttpRequest(int client_fd) {
         cli.addReadIdx(idx);
         if (req.getEntityArrived()) {
           HttpResponse& res = cli.addRess().backRess();
-
+          printReq(req);
           try {
             RouteRule rule = findRouteRule(req, client_fd);
             if (rule.getIsCgi()) {
