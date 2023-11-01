@@ -4,7 +4,7 @@
 #include "HttpResponse.hpp"
 #include <string>
 
-class Encoder{
+class HttpEncoder{
   public:
     static std::string execute(const HttpResponse& res);
 };

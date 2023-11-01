@@ -38,7 +38,7 @@ void                                      HttpResponse::readDir(const std::strin
 }
 
 
-HttpResponse::HttpResponse() : _http_major(0), _http_minor(0), _status(0), \
+HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
   _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false) {}
 
 // Getters
@@ -52,7 +52,7 @@ const bool&                               HttpResponse::getIsChunked() const { r
 const std::vector<char>&                  HttpResponse::getBody() const { return _body; }
 const bool&                               HttpResponse::getIsReady() const { return _is_ready; }
 const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
-const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipe(); }
+const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipeFromCgi(); }
 CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
 
 // Setters
@@ -148,8 +148,8 @@ void                                      HttpResponse::publishError(int status)
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
 
 void HttpResponse::initializeCgiProcess(
-    HttpRequest& req, RouteRule& rule, const std::string& server_name, const int& port) throw(std::runtime_error) {
-  _cgi_handler = CgiHandler(req, rule, server_name, port);
+    HttpRequest& req, RouteRule& rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error) {
+  _cgi_handler = CgiHandler(req, rule, server_name, port, client_fd);
 }
 
 int HttpResponse::cgiExecute(void) throw(std::runtime_error) {

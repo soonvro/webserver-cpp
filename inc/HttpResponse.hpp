@@ -35,13 +35,13 @@ class HttpResponse {
     bool                                      _is_cgi;
     CgiHandler                                _cgi_handler;
 
-    void                                      readFile(const std::string& path);
     void                                      readDir(const std::string& path);
 
   //  const static std::map<std::string, std::string> contentTypes;
 
   public:
     HttpResponse();
+
 
     const unsigned short&                     getHttpMajor(void) const;
     const unsigned short&                     getHttpMinor(void) const;
@@ -76,8 +76,10 @@ class HttpResponse {
     void                                      setHeader(const std::string& key, const std::string& value); 
 
     void initializeCgiProcess(HttpRequest& req, RouteRule& rule,
-                              const std::string& server_name, const int& port) throw(std::runtime_error);
+                              const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
     int  cgiExecute(void) throw(std::runtime_error);
+    
+    void                                      readFile(const std::string& path);
 
     class FileNotFoundException : public std::exception {
       public: 

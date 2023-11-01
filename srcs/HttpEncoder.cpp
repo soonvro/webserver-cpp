@@ -1,15 +1,21 @@
-#include "Encoder.hpp"
+#include "HttpEncoder.hpp"
 #include "HttpResponse.hpp"
 #include <iterator>
 
-std::string Encoder::execute(const HttpResponse& res){
-  std::string encoded_response = "HTTP/1.1";
+
+std::string HttpEncoder::execute(const HttpResponse& res){
+  std::stringstream ss;
+  std::string encoded_response = "HTTP/";
+  ss << res.getHttpMajor() << "." << res.getHttpMinor();
+  encoded_response += ss.str();
   encoded_response += " ";
-  encoded_response += std::to_string(res.getStatus());
+  ss.str("");
+  ss.clear();
+  ss << res.getStatus();
+  encoded_response += ss.str();
   encoded_response += " ";
   encoded_response += res.getStatusMessage();
   encoded_response += "\r\n";
-  
   const std::map<std::string, std::string>& headers = res.getHeader();
   std::map<std::string, std::string>::const_iterator it = headers.begin();
   while (it != headers.end()){
