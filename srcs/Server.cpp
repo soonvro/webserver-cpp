@@ -149,28 +149,36 @@ void Server::recvHttpRequest(int client_fd) {
     HttpRequest&  last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
-      idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
-      cli.addReadIdx(idx);
-      if (!last_request.getEntityArrived()) return ;
-      HttpResponse& res = cli.addRess().backRess();
-      try{
-        RouteRule rule = findRouteRule(last_request, client_fd);
-        if (rule.getIsCgi()) {
-          executeCgi(res, last_request, rule, client_fd);
-        } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
-          res.publish(last_request, rule);
-        } else {
-          res.publishError(405);
+      try {
+        idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        cli.addReadIdx(idx);
+        if (!last_request.getEntityArrived()) return ;
+        HttpResponse& res = cli.addRess().backRess();
+        try{
+          RouteRule rule = findRouteRule(last_request, client_fd);
+          if (rule.getIsCgi()) {
+            executeCgi(res, last_request, rule, client_fd);
+          } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
+            res.publish(last_request, rule);
+          } else {
+            res.publishError(405);
+          }
+        } catch (Host::NoRouteRuleException& e) { 
+          res.publishError(404);
+          std::cout << e.what() << std::endl;
+        } catch (std::runtime_error& e) { 
+          res.publishError(500);
+          std::cout << e.what() << std::endl;
         }
-      } catch (Host::NoRouteRuleException &e) { 
-        res.publishError(404);
-        std::cout << e.what() << std::endl;
-      } catch (std::runtime_error &e) { 
-        res.publishError(500);
+        cli.eraseBuf();
+        cli.popReqs();
+      } catch (HttpRequest::ChunkedException& e) {
+        HttpResponse& res = cli.addRess().backRess();
+
+        cli.setEof(true);
+        res.publishError(411);
         std::cout << e.what() << std::endl;
       }
-      cli.eraseBuf();
-      cli.popReqs();
     }
   }
 
@@ -189,29 +197,38 @@ void Server::recvHttpRequest(int client_fd) {
     hd.setDataSpace(static_cast<void*>(&req));
     printReq(data);
     if (hd.execute(&(data)[0], size) == size) {
-      idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+      try {
+        idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
-      cli.addReqs(req);
-      cli.addReadIdx(idx);
-      if (req.getEntityArrived()) {
-      HttpResponse& res = cli.addRess().backRess();
-        try{
-          RouteRule rule = findRouteRule(req, client_fd);
-          if (rule.getIsCgi()) {
-            executeCgi(res, req, rule, client_fd);
-          } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
-            res.publish(req, rule);
-          } else {
-            res.publishError(405);
+        cli.addReqs(req);
+        cli.addReadIdx(idx);
+        if (req.getEntityArrived()) {
+          HttpResponse& res = cli.addRess().backRess();
+
+          try {
+            RouteRule rule = findRouteRule(req, client_fd);
+            if (rule.getIsCgi()) {
+              executeCgi(res, req, rule, client_fd);
+            } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
+              res.publish(req, rule);
+            } else {
+              res.publishError(405);
+            }
+          } catch (Host::NoRouteRuleException& e) {
+            res.publishError(404);
+            std::cout << e.what() << std::endl;
+          } catch (std::runtime_error &e) { 
+            res.publishError(500);
+            std::cout << e.what() << std::endl;
           }
-        } catch (Host::NoRouteRuleException &e) {
-          res.publishError(404);
-          std::cout << e.what() << std::endl;
-        } catch (std::runtime_error &e) { 
-          res.publishError(500);
-          std::cout << e.what() << std::endl;
+          cli.popReqs();
         }
-        cli.popReqs();
+      } catch (HttpRequest::ChunkedException& e) {
+        HttpResponse& res = cli.addRess().backRess();
+
+        cli.setEof(true);
+        res.publishError(411);
+        std::cout << e.what() << std::endl;
       }
     } else {
       std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
