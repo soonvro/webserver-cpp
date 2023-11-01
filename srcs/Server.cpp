@@ -38,8 +38,10 @@ void Server::changeEvents(std::vector<struct kevent>& change_list,
 }
 
 void Server::handleErrorKevent(int fd) {
-  if (_server_sockets.find(fd) != _server_sockets.end())
-    throw std::runtime_error("Error: server socket error.");
+  if (_server_sockets.find(fd) == _server_sockets.end()){
+    std::cout << "kqueue Error fd :" << fd << std::endl;
+    return ;
+  }
   std::cout << "Client socket error" << std::endl;
   disconnectClient(fd);
 }
@@ -88,12 +90,12 @@ void Server::sendHttpResponse(int client_fd) {
 }
 
 void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, int client_fd) {
-  res.initializeCgiProcess(req, rule, req.getHost(), _clients[client_fd].getPort());
+  res.initializeCgiProcess(req, rule, req.getHost(), _clients[client_fd].getPort(), client_fd);
   _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   int cgi_pid = res.cgiExecute();
   _cgi_responses_on_pid[cgi_pid] = &res;
-  changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
+  //changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -197,14 +199,13 @@ void Server::recvCgiResponse(int cgi_fd) {
 
   int n;
   while ((n = read(cgi_fd, buf, BUF_SIZE)) != 0) {
-    sleep(1);
     if (n == -1) {
+      if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
       throw std::runtime_error("Error: read error.");
     }
     if (n > 0) cgi_handler.addBuf(buf, n);
   }
   if (n != 0) return ;
-  std::cout << "buf :" << buf << std::endl;
   cgi_handler.closeReadPipe();
   res.setIsReady(true);
   //enable write event
@@ -298,10 +299,11 @@ void Server::run(void) {
           res.publishError(502);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
-      } else if (curr_event->flags & EV_EOF) {  // socket disconnect event
+      } else if (curr_event->flags & EV_EOF && _server_sockets.find(curr_event->ident) != _server_sockets.end()) {  // socket disconnect event
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
-        checkTimeout();
+        std::cout<< "";
+        // checkTimeout();
       } else if (curr_event->filter == EVFILT_READ) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);

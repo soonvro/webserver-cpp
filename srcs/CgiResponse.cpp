@@ -10,9 +10,11 @@ CgiResponse::CgiResponse(std::string& s){
   std::string key;
   std::string value;
   ss_one_line >> key >> value;
+  _type = kDocument;
   if (key == "Content-Type:") {
     _type = kDocument;
     _headers["Content-Type"] = value;
+    _status = 200;
   } else if (key == "Location:") {
     _headers["Location"] = value;
     if (key[0] == '/') {
@@ -21,9 +23,11 @@ CgiResponse::CgiResponse(std::string& s){
     else {
       _type = kClientRedir;
     }
-  } else {
-    throw std::runtime_error("invalid cgi response");
-  }
+    _status = 302;
+  } 
+  // else {
+  //   throw std::runtime_error("invalid cgi response");
+  // }
   //get other header
   while (1){
     getline(ss, line);

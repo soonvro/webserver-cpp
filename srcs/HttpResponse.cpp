@@ -148,8 +148,8 @@ void                                      HttpResponse::publishError(int status)
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
 
 void HttpResponse::initializeCgiProcess(
-    HttpRequest& req, RouteRule& rule, const std::string& server_name, const int& port) throw(std::runtime_error) {
-  _cgi_handler = CgiHandler(req, rule, server_name, port);
+    HttpRequest& req, RouteRule& rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error) {
+  _cgi_handler = CgiHandler(req, rule, server_name, port, client_fd);
 }
 
 int HttpResponse::cgiExecute(void) throw(std::runtime_error) {
