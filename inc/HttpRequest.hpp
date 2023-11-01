@@ -54,6 +54,11 @@ class HttpRequest {
       return pthis->saveRquestData(hd);
     }
 
+    class ChunkedException : public std::exception {
+      public: 
+        const char* what() const throw() { return "Chunked is wrong."; }
+    };
+
   private:
     static unsigned char                toLower(unsigned char c);
 
@@ -63,6 +68,9 @@ class HttpRequest {
     bool                                recognizeHeaderField(HttpDecoder* hd, const char *at, unsigned int len);
     bool                                parseHeaderValue(HttpDecoder* hd, const char *at, unsigned int len);
     bool                                saveRquestData(HttpDecoder* hd);
+
+    void                                chunkedLength(const std::vector<char>& buf, size_t& i);
+    void                                chunkedSetting(const std::vector<char>& buf, size_t& i);
 
     //start line
     enum HPS::Method                    _method;
@@ -80,11 +88,14 @@ class HttpRequest {
     std::map<std::string, std::string>  _headers;
     unsigned long long                  _content_length;
 
+    long long                           _chunked_block_length;
+
     bool                                _has_host;
     bool                                _is_chunked;
     bool                                _is_connection_keep_alive;
     bool                                _is_connection_close;
     bool                                _is_content_length;
+    bool                                _has_chunked_len;
 
     //entity
     std::vector<char>                   _entity;
