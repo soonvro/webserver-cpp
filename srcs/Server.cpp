@@ -54,11 +54,16 @@ void Server::disconnectClient(const int client_fd) {
 
 void Server::connectClient(int server_socket) {
   int client_socket;
+  sockaddr_in client_address;
+  socklen_t client_len = sizeof(client_address);
 
-  if ((client_socket = accept(server_socket, NULL, NULL)) == -1)
+  if ((client_socket = accept(server_socket, (struct sockaddr*)&client_address, &client_len)) == -1)
     throw std::runtime_error("Error: accept fail");
   fcntl(client_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
-
+  char client_ip[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
+  uint16_t client_port = ntohs(client_address.sin_port);
+  std::cout << "Accepted connection from " << client_ip << ":" << client_port << std::endl;
   setSocketOption(client_socket);
   std::cout << "accept new client: " << client_socket << std::endl;
 
@@ -95,6 +100,7 @@ void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, in
   int cgi_pid = res.cgiExecute();
   _cgi_responses_on_pid[cgi_pid] = &res;
   changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
+  std::cout << "create cgi process, pid: " << cgi_pid  << ", pipe_fd: " << res.getCgiPipeIn() << std::endl;
 }
 
 void Server::recvHttpRequest(int client_fd) {
@@ -288,6 +294,7 @@ void Server::init(void) {
       throw std::runtime_error("Error: bind failed.");
     if (listen(socket_fd, BACKLOG) == -1)
       throw std::runtime_error("Error: listen fail.");
+    std::cout << "socket fd: " << socket_fd << std::endl;
     changeEvents(_change_list, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                   0, NULL);
     it++;
@@ -301,21 +308,25 @@ void Server::run(void) {
   struct kevent event_list[EVENT_LIST_SIZE];
   struct kevent* curr_event;
   while (1) {
-    new_event = kevent(_kq, &_change_list[0], _change_list.size(), event_list,
+    new_event = kevent(_kq, &(_change_list[0]), _change_list.size(), event_list,
                        EVENT_LIST_SIZE, NULL);
     if (new_event == -1) throw std::runtime_error("Error: kevent fail.");
     _change_list.clear();
     for (int i = 0; i < new_event; ++i) {
-      std::cout << "New kevent :" << new_event << std::endl;
       curr_event = &event_list[i];
+      if (curr_event -> ident != 0){
+        std::cout << "New kevent :" << new_event << " cur idx: " << i << std::endl;
+        std::cout << "curr ident: " << curr_event->ident << ", data: " << curr_event->data << std::endl;
+        std::cout << "EVFILT: " << curr_event->filter << "\n" << std::endl ;
+      }
       if (curr_event->flags & EV_ERROR) {  // error event
-
         handleErrorKevent(curr_event->ident);
       } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
-        waitpid(curr_event->ident, NULL, WNOHANG);
-        std::cout << "waitpid :" << curr_event->ident << std::endl;
-        if (curr_event->data == EXIT_FAILURE) {
-          std::cout << "waitpid :" << curr_event->ident << std::endl;
+        int status = -1;
+        waitpid(curr_event->ident, &status, WNOHANG);
+        std::cout << "waitpid :" << curr_event->ident << " status: " << WEXITSTATUS(status) << std::endl;
+        if (WEXITSTATUS(status) != 0) {
+          std::cout << "EXIT_FAILURE:" << curr_event->ident << std::endl;
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
           res.publishError(502);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -331,11 +342,16 @@ void Server::run(void) {
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
+          if (curr_event->data == 0) {
+            HttpResponse& res = *_cgi_responses_on_pipe[curr_event->ident];
+            res.getCgiHandler().closeReadPipe();
+            continue;
+          }
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
         sendHttpResponse(curr_event->ident);
-      }
+      } else std::cout << "Who you are???" << std::endl;
     }
   }
 }

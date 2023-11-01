@@ -26,6 +26,7 @@ class CgiHandler {
 
     const int&          getClientFd(void) const;
     const std::vector<char>& getBuf(void) const;
+    const RouteRule&          getRouteRule(void) const;
 
     void addBuf(const char* buf, size_t size);
     void closeReadPipe(void);

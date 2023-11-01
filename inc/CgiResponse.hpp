@@ -9,7 +9,8 @@ enum CgiType{
   kDocument,
   kLocalRedir,
   kClientRedir,
-  kClientRedirDoc
+  kClientRedirDoc,
+  kError
 };
 
 class CgiResponse{

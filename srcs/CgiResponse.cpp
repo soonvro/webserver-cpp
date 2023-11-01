@@ -2,47 +2,47 @@
 #include <sstream>
 
 CgiResponse::CgiResponse(std::string& s){
-  std::stringstream ss(s);
   std::string line;
-
-  getline(ss, line);
-  std::stringstream ss_one_line(line);
   std::string key;
   std::string value;
-  ss_one_line >> key >> value;
-  _type = kDocument;
-  if (key == "Content-Type:") {
-    _type = kDocument;
-    _headers["Content-Type"] = value;
-    _status = 200;
-  } else if (key == "Location:") {
-    _headers["Location"] = value;
-    if (key[0] == '/') {
-      _type = kLocalRedir;
-    }
-    else {
-      _type = kClientRedir;
-    }
-    _status = 302;
-  } 
-  // else {
-  //   throw std::runtime_error("invalid cgi response");
-  // }
-  //get other header
+  std::stringstream ss(s);
+  std::stringstream ss_one_line;
+
   while (1){
-    getline(ss, line);
-    if (line == "")
+    std::getline(ss, line);
+    if (line == "\r" || line == "")
       break;
     ss_one_line.str(line);
     ss_one_line >> key >> value;
     key.pop_back();
+    value.pop_back();
     _headers[key] = value;
     if (ss.eof())
-      return ;
+      break ;
+  }
+  if (_headers.find("Location") != _headers.end()){
+    value = _headers["Location"];
+    if (value[0] == '/'){
+      _status = 300;
+      _type = kLocalRedir;
+    }else{
+      _status = 302;
+      _type = kClientRedir;
+    }
+  } else if (_headers.find("Content-type") != _headers.end()) {
+      _status = 200;
+      _type = kDocument;
+  } else {
+      _status = 404;
+      _type = kError;
   }
   //get body
-  ss >> line;
+  line = ss.str().substr(ss.tellg());
+
   _body.assign(line.begin(), line.end());
+  if (_type == kClientRedir && _body.size() > 0){
+    _type = kClientRedirDoc;
+  }
 }
 
 const std::vector<char>&                  CgiResponse::getBody(void) const { return _body; }

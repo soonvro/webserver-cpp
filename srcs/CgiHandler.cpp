@@ -72,6 +72,7 @@ void CgiHandler::setupCgiEnvp(void) {
   setenv("QUERY_STRING", _req.getQueries().c_str(), 1);
   setenv("SCRIPT_NAME", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
   setenv("PATH_INFO", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
+  
   char current_dir[512];
   getcwd(current_dir, 512);
   std::string slash = "/";
@@ -113,6 +114,7 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
 
 const int&                CgiHandler::getClientFd(void) const{ return _client_fd; }
 const std::vector<char>&  CgiHandler::getBuf(void) const{ return _buf; }
+const RouteRule&          CgiHandler::getRouteRule(void) const { return _route_rule; };
 
 void  CgiHandler::addBuf(const char* buf, size_t size){ _buf.insert(_buf.end(), buf, buf + size); }
 void  CgiHandler::closeReadPipe(void){ close(_pipe_from_cgi_fd[PIPE_READ]); }
