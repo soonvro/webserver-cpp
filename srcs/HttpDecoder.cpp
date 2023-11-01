@@ -240,6 +240,7 @@ void HttpDecoder::readNBytes(unsigned int n) {
   }
   _p += n;
   _n_read += n;
+  if (_p == _buf + _buf_len) return;
   _c = *_p;
   return;
 }
