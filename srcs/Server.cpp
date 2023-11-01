@@ -143,17 +143,18 @@ void Server::recvHttpRequest(int client_fd) {
         } catch (Host::NoRouteRuleException& e) { 
           res.publishError(404);
           std::cout << e.what() << std::endl;
-        } catch (std::runtime_error &e) { 
+        } catch (std::runtime_error& e) { 
           res.publishError(500);
           std::cout << e.what() << std::endl;
         }
         cli.eraseBuf();
         cli.popReqs();
       } catch (HttpRequest::ChunkedException& e) {
-        HttpResponse res = cli.addRess().backRess();
+        HttpResponse& res = cli.addRess().backRess();
 
         cli.setEof(true);
         res.publishError(411);
+        std::cout << e.what() << std::endl;
       }
     }
   }
@@ -189,7 +190,7 @@ void Server::recvHttpRequest(int client_fd) {
             } else {
               res.publishError(405);
             }
-          } catch (Host::NoRouteRuleException &e) {
+          } catch (Host::NoRouteRuleException& e) {
             res.publishError(404);
             std::cout << e.what() << std::endl;
           } catch (std::runtime_error &e) { 
@@ -199,10 +200,11 @@ void Server::recvHttpRequest(int client_fd) {
           cli.popReqs();
         }
       } catch (HttpRequest::ChunkedException& e) {
-        HttpResponse res = cli.addRess().backRess();
+        HttpResponse& res = cli.addRess().backRess();
 
         cli.setEof(true);
         res.publishError(411);
+        std::cout << e.what() << std::endl;
       }
     } else {
       HttpResponse& res = cli.addRess().backRess();
