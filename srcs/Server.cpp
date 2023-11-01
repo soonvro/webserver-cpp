@@ -96,9 +96,6 @@ void Server::connectClient(int server_socket) {
 void Server::sendHttpResponse(int client_fd) {
   Client& client = _clients[client_fd];
   const std::queue<HttpResponse>& responses = client.getRess();
-
-  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  std::cout << "n_res: " << responses.size() << std::endl;
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
     std::string encoded_response = HttpEncoder::execute(responses.front());
@@ -231,7 +228,6 @@ void Server::recvHttpRequest(int client_fd) {
         std::cout << e.what() << std::endl;
       }
     } else {
-      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
       HttpResponse& res = cli.addRess().backRess();
       cli.setEof(true);
       res.publishError(400);
