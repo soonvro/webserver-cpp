@@ -8,6 +8,25 @@
 #include "HttpEncoder.hpp"
 #include "CgiResponse.hpp"
 
+
+#define DEBUGMOD 1
+
+void  printReq(const std::vector<char>& data){
+  if (!DEBUGMOD){
+    return ;
+  }
+  std::string req_data(data.begin(), data.end());
+  std::cout << "<< REQUEST MESSAGE >>\n" << req_data << '\n' << std::endl;
+}
+
+void  printRes(const char* data, size_t size){
+  if (!DEBUGMOD){
+    return ;
+  }
+  std::string res(data, data + size);
+  std::cout << "<< RESPONSE MESSAGE >>\n" << res << '\n' << std::endl;
+}
+
 Server::Server(const char* configure_file) {
   std::cout << "Server constructing : " << configure_file << std::endl;
   ConfigReader reader(configure_file);
@@ -77,13 +96,14 @@ void Server::connectClient(int server_socket) {
 void Server::sendHttpResponse(int client_fd) {
   Client& client = _clients[client_fd];
   const std::queue<HttpResponse>& responses = client.getRess();
-
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
     std::string encoded_response = HttpEncoder::execute(responses.front());
     const char* buf = encoded_response.c_str();
+    printRes(buf, std::strlen(buf));
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
+    printRes(buf, responses.front().getContentLength());
     write(client_fd, buf, responses.front().getContentLength());
     client.popRess();
     std::cout << "response sent: client fd : " << client_fd << std::endl;
@@ -172,6 +192,7 @@ void Server::recvHttpRequest(int client_fd) {
         NULL, NULL,
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
+    printReq(data);
     if (hd.execute(&(data)[0], size) == size) {
       try {
         idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
@@ -233,6 +254,7 @@ void Server::recvCgiResponse(int cgi_fd) {
   }
   if (n != 0) return ;
   cgi_handler.closeReadPipe();
+  if (n == 0 && cgi_handler.getBuf().size() == 0) return ;
   res.setIsReady(true);
   //enable write event
   //delete cgi_handler from _cgi_handler
@@ -359,11 +381,6 @@ void Server::run(void) {
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
-          if (curr_event->data == 0) {
-            HttpResponse& res = *_cgi_responses_on_pipe[curr_event->ident];
-            res.getCgiHandler().closeReadPipe();
-            continue;
-          }
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
