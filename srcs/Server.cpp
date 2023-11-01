@@ -258,6 +258,7 @@ void Server::recvCgiResponse(int cgi_fd) {
   }
   if (n != 0) return ;
   cgi_handler.closeReadPipe();
+  if (n == 0 && cgi_handler.getBuf().size() == 0) return ;
   res.setIsReady(true);
   //enable write event
   //delete cgi_handler from _cgi_handler
@@ -384,11 +385,6 @@ void Server::run(void) {
           _clients[curr_event->ident].setLastRequestTime(getTime());
           recvHttpRequest(curr_event->ident);
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
-          if (curr_event->data == 0) {
-            HttpResponse& res = *_cgi_responses_on_pipe[curr_event->ident];
-            res.getCgiHandler().closeReadPipe();
-            continue;
-          }
           recvCgiResponse(curr_event->ident);
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
