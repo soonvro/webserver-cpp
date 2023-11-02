@@ -16,7 +16,7 @@ void  printReq(const HttpRequest& req){
     return ;
   }
   std::map<std::string, std::string>::const_iterator i = req.getHeaders().begin();
-  std::cout << "<< REQUEST MESSAGE >>\n";
+  std::cout << ">> REQUEST MESSAGE >>\n";
   if (req.getMethod() == HPS::kGET){
     std::cout << "GET ";
   }
@@ -47,7 +47,7 @@ void  printRes(std::string header, const char* data, size_t size){
     return ;
   }
   std::string res(data, data + size);
-  std::cout << "<< RESPONSE MESSAGE >>\n" << header << "\n\n" << res << '\n' << std::endl;
+  std::cout << "<< RESPONSE MESSAGE <<\n" << header << "\n\n" << res << '\n' << std::endl;
 }
 
 Server::Server(const char* configure_file) {
