@@ -16,24 +16,18 @@ void  printReq(const HttpRequest& req){
     return ;
   }
   std::map<std::string, std::string>::const_iterator i = req.getHeaders().begin();
-  std::cout << ">> REQUEST MESSAGE >>\n";
-  if (req.getMethod() == HPS::kGET){
-    std::cout << "GET ";
-  }
-  if (req.getMethod() == HPS::kHEAD){
-    std::cout << "HEAD ";
-  }if (req.getMethod() == HPS::kPOST){
-    std::cout << "POST ";
-  }if (req.getMethod() == HPS::kDELETE){
-    std::cout << "DELETE ";
-  }
+  std::cout << ">>>> REQUEST MESSAGE >>>>\n";
+  const char* methods[] = {"GET", "HEAD", "POST", "DELETE"};
+    std::cout << methods[req.getMethod() - 1] << ' ';
   std::cout  << req.getHost() << \
   req.getLocation() << "?" << req.getQueries()<< " HTTP/1.1" <<std::endl;
+  std::cout << "Content-Length: " << req.getContentLength() << std::endl;
+  if (req.getIsChunked()) std::cout << "is Chuncked Body !!" << std::endl;
   while (i != req.getHeaders().end()){
     std::cout << i->first << ": " << i->second << std::endl;
     i++;
   }
-  std::cout << "Host: " << std::endl;
+  std::cout << "Host: " << req.getHost() << std::endl;
   const std::vector<char>& entity = req.getEntity();
   std::vector<char>::const_iterator j = entity.begin();
   while (j != req.getEntity().end()){
@@ -47,7 +41,7 @@ void  printRes(std::string header, const char* data, size_t size){
     return ;
   }
   std::string res(data, data + size);
-  std::cout << "<< RESPONSE MESSAGE <<\n" << header << "\n\n" << res << '\n' << std::endl;
+  std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << res << '\n' << std::endl;
 }
 
 Server::Server(const char* configure_file) {
