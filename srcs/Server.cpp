@@ -46,7 +46,8 @@ void  printRes(std::string header, const char* data, size_t size){
     return ;
   }
   std::string res(data, data + size);
-  std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << res << '\n' << std::endl;
+  std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << std::endl;
+  // std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << res << '\n' << std::endl;
 }
 
 Server::Server(const char* configure_file) {
@@ -125,9 +126,11 @@ void Server::sendHttpResponse(int client_fd) {
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
     printRes(encoded_response, &(responses.front().getBody())[0], responses.front().getContentLength());
-    write(client_fd, buf, responses.front().getContentLength());
+    fcntl(client_fd, F_SETFL, 0, FD_CLOEXEC);
+    int n = write(client_fd, buf, responses.front().getContentLength());
+    fcntl(client_fd, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
     client.popRess();
-    std::cout << "response sent: client fd : " << client_fd << std::endl;
+    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
   else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
@@ -154,7 +157,7 @@ void Server::recvHttpRequest(int client_fd) {
   while ((n = read(client_fd, buf, BUF_SIZE)) != 0) {
     if (n == -1) {
       if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
-      throw std::runtime_error("Error: read error.");
+      throw std::runtime_error("Error: read error. <recvHttpRequest>");
     }
     if (n > 0) cli.addBuf(buf, n);
   }
@@ -163,9 +166,9 @@ void Server::recvHttpRequest(int client_fd) {
     disconnectClient(client_fd);
     return ;
   }
-  // std::cout << "----------------------------------------------------------" << std::endl;
-  // std::cout << std::string(cli.getBuf().begin(), cli.getBuf().end()) << std::endl;
-  // std::cout << "----------------------------------------------------------" << std::endl;
+  std::cout << "----------------------------------------------------------" << std::endl;
+  std::cout << std::string(cli.getBuf().begin(), cli.getBuf().end()) << std::endl;
+  std::cout << "----------------------------------------------------------" << std::endl;
 
   int idx;
   if (cli.getReqs().size() > 0) {
@@ -183,6 +186,8 @@ void Server::recvHttpRequest(int client_fd) {
           if (rule.getIsCgi()) {
             executeCgi(res, last_request, rule, client_fd);
           } else if (last_request.getMethod() == HPS::kGET){
+            res.publish(last_request, rule);
+          } else if (last_request.getMethod() == HPS::kPOST && last_request.getLocation() == "/post_body"){
             res.publish(last_request, rule);
           } else {
             res.publishError(405);
@@ -240,6 +245,8 @@ void Server::recvHttpRequest(int client_fd) {
               executeCgi(res, req, rule, client_fd);
             } else if (req.getMethod() == HPS::kGET){
               res.publish(req, rule);
+            } else if (req.getMethod() == HPS::kPOST && req.getLocation() == "/post_body"){
+              res.publish(req, rule);
             } else {
               res.publishError(405);
             }
@@ -290,6 +297,10 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler){
   //   idx += n;
   // }
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], p_handler->getRequest().getEntity().size() - idx);
+  if (n == -1) {
+    if (errno == EWOULDBLOCK || errno == EAGAIN) return ; // NON-BLOCK socket read buff 꽉찼을 때
+    throw std::runtime_error("Error: read error. <sendCgiRequest>");
+  }
   idx += n;
   
   std::cout << "send end"  << std::endl;
@@ -308,7 +319,7 @@ void  Server::recvCgiResponse(int cgi_fd) {
   while ((n = read(cgi_fd, buf, BUF_SIZE)) != 0) {
     if (n == -1) {
       if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
-      throw std::runtime_error("Error: read error.");
+      throw std::runtime_error("Error: read error. <recvCgiResponse>");
     }
     if (n > 0) cgi_handler.addBuf(buf, n);
   }

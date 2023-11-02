@@ -92,6 +92,9 @@ void CgiHandler::setupCgiEnvp(void) {
   ss << _port;
   setenv("SERVER_PORT", ss.str().c_str(), 1);
   setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+
+  if (!_req.getHeaderValue("x-secret-header-for-test").empty())
+    setenv("HTTP_X_SECRET_HEADER_FOR_TEST", _req.getHeaderValue("x-secret-header-for-test").c_str(), 1);
 }
 int CgiHandler::execute(void) throw(std::runtime_error) {
   pid_t pid = fork();

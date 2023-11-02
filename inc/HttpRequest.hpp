@@ -27,7 +27,7 @@ class HttpRequest {
     const std::map<std::string, std::string>& getHeaders(void) const;
     const unsigned long long&                 getContentLength(void) const;
     const bool&                               getIsChunked(void) const;
-    const std::vector<char>                   getEntity(void) const;
+    const std::vector<char>&                  getEntity(void) const;
     const bool&                               getHeaderArrived(void) const;
     const bool&                               getEntityArrived(void) const;
     const std::string                         getHeaderValue(std::string h_field) const;

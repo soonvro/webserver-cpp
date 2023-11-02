@@ -25,7 +25,7 @@ const unsigned short&                     HttpRequest::getHttpMinor() const { re
 const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return _headers; }
 const unsigned long long&                 HttpRequest::getContentLength() const { return _content_length; }
 const bool&                               HttpRequest::getIsChunked() const { return _is_chunked; }
-const std::vector<char>                   HttpRequest::getEntity() const { return _entity; }
+const std::vector<char>&                  HttpRequest::getEntity() const { return _entity; }
 const bool&                               HttpRequest::getHeaderArrived() const { return _header_arrived; }
 const bool&                               HttpRequest::getEntityArrived() const { return _entity_arrived; }
 const std::string                         HttpRequest::getHeaderValue(std::string h_field) const { 
@@ -214,7 +214,7 @@ void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
   size_t  j = i;
   while (i < buf.size() && buf[i] != '\n') ++i;
 
-  if ((j == i - 1 && buf[i - 1] == '\r') || j == i) {
+  if ((i > 0 && j == i - 1 && buf[i - 1] == '\r') || j == i) {
     _chunked_block_length = -1;
     return ;
   }
