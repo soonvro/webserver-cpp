@@ -106,11 +106,11 @@ void                                      HttpResponse::publish(const HttpReques
       addContentLength();
       return ;
     } else if (isDir(rule.getRoot() + location)) {
-      if (rule.getIndexPage().size() && rule.getRoot() == location) {
+      if (rule.getIndexPage().size() && rule.getRoute() == location) {
         _status = 200;
         if (!(req.getMethod() & HPS::kHEAD))
             readFile(rule.getRoot() + "/" + rule.getIndexPage());
-      } else if (rule.getAutoIndex() && rule.getRoot() == location){
+      } else if (rule.getAutoIndex() && rule.getRoute() == location){
         _status = 200;
         if (!(req.getMethod() & HPS::kHEAD))
             readDir(rule.getRoot() + location);
