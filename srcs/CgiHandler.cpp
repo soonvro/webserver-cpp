@@ -4,6 +4,7 @@
 #include <sstream>
 #include "CgiHandler.hpp"
 #include <unistd.h>
+#include <iostream>
 
 
 CgiHandler::CgiHandler() {}
@@ -46,10 +47,10 @@ const int& CgiHandler::getReadPipeFromCgi(void) const { return _pipe_from_cgi_fd
 
 void CgiHandler::setPipe(void) throw(std::runtime_error) {
   if (pipe(_pipe_from_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
-  fcntl(_pipe_from_cgi_fd[0], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_from_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
 
   if (pipe(_pipe_to_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
-  fcntl(_pipe_to_cgi_fd[0], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_to_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
 }
 
 void CgiHandler::setupCgiEnvp(void) {
@@ -105,8 +106,11 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
       close(_pipe_from_cgi_fd[PIPE_WRITE]);
       close(_pipe_to_cgi_fd[PIPE_READ]);
 
+      std::cout << "writing " << _req.getEntity().size() << " bytes in cgi..." << std::endl;
       if (write(_pipe_to_cgi_fd[PIPE_WRITE], &((_req.getEntity())[0]), _req.getEntity().size()) == -1)
         throw std::runtime_error("error: pipe write error!");
+      std::cout << "cgi write end..." << std::endl;
+      
       close(_pipe_to_cgi_fd[PIPE_WRITE]);
   }
   return pid;

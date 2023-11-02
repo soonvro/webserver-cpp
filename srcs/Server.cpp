@@ -11,7 +11,8 @@
 
 #define DEBUGMOD 1
 
-void  printReq(const HttpRequest& req){
+void  printReq(const HttpRequest& req, const std::vector<char> data){
+  (void)data;
   if (!DEBUGMOD){
     return ;
   }
@@ -28,12 +29,16 @@ void  printReq(const HttpRequest& req){
     i++;
   }
   std::cout << "Host: " << req.getHost() << std::endl;
-  const std::vector<char>& entity = req.getEntity();
-  std::vector<char>::const_iterator j = entity.begin();
-  while (j != req.getEntity().end()){
-    std::cout << *j;
-  }
+  // const std::vector<char>& entity = req.getEntity();
+  // std::vector<char>::const_iterator j = entity.begin();
+  // while (j != req.getEntity().end()){
+  //   std::cout << *j;
+  // }
   std::cout<< std::endl;
+
+  // std::cout << "--------------------------------------" << std::endl;
+  // std::cout << std::string(data.begin(), data.end()) << std::endl;
+  // std::cout << "--------------------------------------" << std::endl;
 }
 
 void  printRes(std::string header, const char* data, size_t size){
@@ -156,15 +161,17 @@ void Server::recvHttpRequest(int client_fd) {
     disconnectClient(client_fd);
     return ;
   }
+  // std::cout << "----------------------------------------------------------" << std::endl;
+  // std::cout << std::string(cli.getBuf().begin(), cli.getBuf().end()) << std::endl;
+  // std::cout << "----------------------------------------------------------" << std::endl;
 
   int idx;
   if (cli.getReqs().size() > 0) {
     HttpRequest& last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
-      printReq(last_request);
-
       try {
+        printReq(last_request, cli.getBuf());
         idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
         cli.addReadIdx(idx);
         if (!last_request.getEntityArrived()) return ;
@@ -188,11 +195,16 @@ void Server::recvHttpRequest(int client_fd) {
         cli.eraseBuf();
         cli.popReqs();
       } catch (HttpRequest::ChunkedException& e) {
-        HttpResponse& res = cli.addRess().backRess();
-
-        cli.setEof(true);
-        res.publishError(411);
         std::cout << e.what() << std::endl;
+        HttpResponse& res = cli.addRess().backRess();
+        RouteRule rule = findRouteRule(last_request, client_fd);
+        if (!(rule.getAcceptedMethods() & (1 << last_request.getMethod()))){
+          res.publishError(405);
+        } else {
+          res.publishError(411);
+        }
+        cli.popReqs();
+        cli.setEof(true);
       }
     }
   }
@@ -212,13 +224,14 @@ void Server::recvHttpRequest(int client_fd) {
     hd.setDataSpace(static_cast<void*>(&req));
     if (hd.execute(&(data)[0], size) == size) {
       try {
+        printReq(req, data);
         idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
 
         cli.addReqs(req);
         cli.addReadIdx(idx);
         if (req.getEntityArrived()) {
           HttpResponse& res = cli.addRess().backRess();
-          printReq(req);
+
           try {
             RouteRule rule = findRouteRule(req, client_fd);
             if (rule.getIsCgi()) {
@@ -238,11 +251,16 @@ void Server::recvHttpRequest(int client_fd) {
           cli.popReqs();
         }
       } catch (HttpRequest::ChunkedException& e) {
-        HttpResponse& res = cli.addRess().backRess();
-
-        cli.setEof(true);
-        res.publishError(411);
         std::cout << e.what() << std::endl;
+        HttpResponse& res = cli.addRess().backRess();
+        RouteRule rule = findRouteRule(req, client_fd);
+        if (!(rule.getAcceptedMethods() & (1 << req.getMethod()))){
+          res.publishError(405);
+        } else {
+          res.publishError(411);
+        }
+        cli.setEof(true);
+        res.publishError(405);
       }
     } else {
       HttpResponse& res = cli.addRess().backRess();

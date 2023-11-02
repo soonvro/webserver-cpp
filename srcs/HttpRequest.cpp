@@ -214,7 +214,7 @@ void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
   size_t  j = i;
   while (i < buf.size() && buf[i] != '\n') ++i;
 
-  if (j == i) {
+  if ((j == i - 1 && buf[i - 1] == '\r') || j == i) {
     _chunked_block_length = -1;
     return ;
   }
