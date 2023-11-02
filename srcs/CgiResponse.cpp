@@ -29,7 +29,7 @@ CgiResponse::CgiResponse(std::string& s){
       _status = 302;
       _type = kClientRedir;
     }
-  } else if (_headers.find("Content-type") != _headers.end()) {
+  } else if (_headers.find("Content-type") != _headers.end() && _headers.find("Content-Type") != _headers.end()) {
       _status = 200;
       _type = kDocument;
   } else {

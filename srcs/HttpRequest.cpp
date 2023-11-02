@@ -54,6 +54,13 @@ bool HttpRequest::isStrCase(const char* lhs_start, unsigned int lhs_len,
   return true;
 }
 
+bool HttpRequest::isOnlySlash(std::string& s) {
+  for (std::string::iterator iter = s.begin(); iter != s.end(); iter++) {
+    if (*iter != '/') return false;
+  }
+  return true;
+}
+
 unsigned char HttpRequest::toLower(unsigned char c) { return tolower(c); }
 
 bool HttpRequest::parseUrl(
@@ -152,6 +159,12 @@ bool HttpRequest::saveRquestData(
   _is_connection_keep_alive = (hd->_flag & HPS::kFlagConnectionKeepAlive);
   _is_connection_close      = (hd->_flag & HPS::kFlagConnectionClose);
   _is_content_length        = (hd->_flag & HPS::kFlagContentlength);
+
+  if (!this->isOnlySlash(_location)) {
+    std::string::iterator new_end = _location.end();
+    for (; (new_end != _location.begin() && *(new_end - 1) == '/') ; new_end--);
+    _location = std::string(_location.begin(), new_end);
+  }
   return true;
 }
 
