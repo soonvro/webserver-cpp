@@ -138,6 +138,8 @@ void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, in
   res.initializeCgiProcess(req, rule, req.getHost(), _clients[client_fd].getPort(), client_fd);
   _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+  changeEvents(_change_list, res.getCgiHandler().getWritePipetoCgi(),
+              EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &(res.getCgiHandler()));
   int cgi_pid = res.cgiExecute();
   _cgi_responses_on_pid[cgi_pid] = &res;
   changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
@@ -274,7 +276,30 @@ void Server::recvHttpRequest(int client_fd) {
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
-void Server::recvCgiResponse(int cgi_fd) {
+void  Server::sendCgiRequest(int cgi_fd, void* handler){
+  CgiHandler* p_handler = static_cast<CgiHandler*>(handler);
+
+  int n;
+  int idx = p_handler->getCgiReqEntityIdx();
+  std::cout << "Cgi request send idx : " << idx << std::endl;
+  // while ((n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], p_handler->getRequest().getEntity().size() - idx)) != 0) {
+  //   if (n == -1) {
+  //     if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
+  //     throw std::runtime_error("Error: read error.");
+  //   }
+  //   idx += n;
+  // }
+  n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], p_handler->getRequest().getEntity().size() - idx);
+  idx += n;
+  
+  std::cout << "send end"  << std::endl;
+
+  p_handler->setCgiReqEntityIdx(idx);
+  if (n == 0) close(cgi_fd);
+}
+
+
+void  Server::recvCgiResponse(int cgi_fd) {
   char    buf[BUF_SIZE] = {0,};
   HttpResponse& res = *_cgi_responses_on_pipe[cgi_fd];
   CgiHandler& cgi_handler = res.getCgiHandler();
@@ -418,8 +443,12 @@ void Server::run(void) {
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
           recvCgiResponse(curr_event->ident);
         }
-      } else if (curr_event->filter == EVFILT_WRITE) {  // client write event
-        sendHttpResponse(curr_event->ident);
+      } else if (curr_event->filter == EVFILT_WRITE) {  //write event
+        if (_clients.count(curr_event->ident)){
+          sendHttpResponse(curr_event->ident);
+        } else {
+          sendCgiRequest(curr_event->ident, curr_event->udata);
+        }
       } else std::cout << "Who you are???" << std::endl;
     }
   }

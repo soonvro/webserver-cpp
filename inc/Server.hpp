@@ -55,6 +55,7 @@ class Server {
   void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
   void      recvHttpRequest(int client_fd);
 
+  void      sendCgiRequest(int cgi_fd, void* req);
   void      recvCgiResponse(int cgi_fd);
 
   RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);

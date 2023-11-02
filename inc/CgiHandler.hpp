@@ -17,8 +17,12 @@ class CgiHandler {
     CgiHandler(const CgiHandler& other);
     CgiHandler& operator=(const CgiHandler& other);
 
+    int getCgiReqEntityIdx(void);
+    HttpRequest& getRequest(void);
     const int& getReadPipeFromCgi(void) const;
+    const int& getWritePipetoCgi(void) const;
 
+    void setCgiReqEntityIdx(int idx);
     void setPipe(void) throw(std::runtime_error);
     void setupCgiEnvp(void);
 
@@ -32,6 +36,8 @@ class CgiHandler {
     void closeReadPipe(void);
 
   private:
+    int _idx;
+
     int       _pipe_to_cgi_fd[2];
     int       _pipe_from_cgi_fd[2];
 
@@ -43,6 +49,7 @@ class CgiHandler {
 
     std::vector<char> _buf;
     int               _client_fd;
+
 
 };
 
