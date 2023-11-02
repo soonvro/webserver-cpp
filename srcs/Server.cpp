@@ -179,7 +179,7 @@ void Server::recvHttpRequest(int client_fd) {
           RouteRule rule = findRouteRule(last_request, client_fd);
           if (rule.getIsCgi()) {
             executeCgi(res, last_request, rule, client_fd);
-          } else if (last_request.getMethod() == HPS::kGET || last_request.getMethod() == HPS::kHEAD){
+          } else if (last_request.getMethod() == HPS::kGET){
             res.publish(last_request, rule);
           } else {
             res.publishError(405);
@@ -229,7 +229,7 @@ void Server::recvHttpRequest(int client_fd) {
             RouteRule rule = findRouteRule(req, client_fd);
             if (rule.getIsCgi()) {
               executeCgi(res, req, rule, client_fd);
-            } else if (req.getMethod() == HPS::kGET || req.getMethod() == HPS::kHEAD){
+            } else if (req.getMethod() == HPS::kGET){
               res.publish(req, rule);
             } else {
               res.publishError(405);
