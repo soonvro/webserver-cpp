@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-#define DEFAULT_ROOT "html"
+#define DEFAULT_ROOT "."
 
 class RouteRule {
  private:

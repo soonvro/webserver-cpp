@@ -9,7 +9,7 @@
 
 HttpRequest::HttpRequest() 
   : _h_field(kHeaderNo),_content_length(0), _chunked_block_length(0),
-  _has_host(false), _is_chunked(false), _is_connection_keep_alive(false),
+  _is_host_header_comein(false), _is_chunked(false), _is_connection_keep_alive(false),
   _is_connection_close(false), _is_content_length(false), _has_chunked_len(false),
   _header_arrived(false), _entity_arrived(false) {}
 
@@ -25,7 +25,7 @@ const unsigned short&                     HttpRequest::getHttpMinor() const { re
 const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return _headers; }
 const unsigned long long&                 HttpRequest::getContentLength() const { return _content_length; }
 const bool&                               HttpRequest::getIsChunked() const { return _is_chunked; }
-const std::vector<char>                   HttpRequest::getEntity() const { return _entity; }
+const std::vector<char>&                  HttpRequest::getEntity() const { return _entity; }
 const bool&                               HttpRequest::getHeaderArrived() const { return _header_arrived; }
 const bool&                               HttpRequest::getEntityArrived() const { return _entity_arrived; }
 const std::string                         HttpRequest::getHeaderValue(std::string h_field) const { 
@@ -51,6 +51,13 @@ bool HttpRequest::isStrCase(const char* lhs_start, unsigned int lhs_len,
     rhs++;
   }
   if (i < lhs_len || *rhs) return false;
+  return true;
+}
+
+bool HttpRequest::isOnlySlash(std::string& s) {
+  for (std::string::iterator iter = s.begin(); iter != s.end(); iter++) {
+    if (*iter != '/') return false;
+  }
   return true;
 }
 
@@ -143,7 +150,7 @@ bool HttpRequest::parseUrl(
 
 bool HttpRequest::saveRquestData(
     HttpDecoder* hd) {
-  if (!_has_host) return false;
+  if (!_is_host_header_comein) return false;
   _method         = hd->_method;
   _http_major     = hd->_http_major;
   _http_minor     = hd->_http_minor;
@@ -152,6 +159,12 @@ bool HttpRequest::saveRquestData(
   _is_connection_keep_alive = (hd->_flag & HPS::kFlagConnectionKeepAlive);
   _is_connection_close      = (hd->_flag & HPS::kFlagConnectionClose);
   _is_content_length        = (hd->_flag & HPS::kFlagContentlength);
+
+  if (!this->isOnlySlash(_location)) {
+    std::string::iterator new_end = _location.end();
+    for (; (new_end != _location.begin() && *(new_end - 1) == '/') ; new_end--);
+    _location = std::string(_location.begin(), new_end);
+  }
   return true;
 }
 
@@ -159,8 +172,6 @@ bool HttpRequest::recognizeHeaderField(
     HttpDecoder* hd, const char *at, unsigned int len) {
   (void)hd;
   if (this->isStrCase(at, len, "host")) {
-    if (_has_host) return false;
-    _has_host = true;
     _h_field = kHeaderHost;
   }
   else {
@@ -177,10 +188,12 @@ bool HttpRequest::parseHeaderValue(
   unsigned int host_end = 0;
   switch (_h_field) {
     case kHeaderHost:
-      if (!_host.empty()) break;
+      if (_is_host_header_comein) return false;  // multiple host header
+      _is_host_header_comein = true;
+      if (!_host.empty()) return true;  // request target has host
       for (; (host_end < len && at[host_end] != ':'); ++host_end);
       _host.assign(at, host_end);
-      break;
+      return true;
     case kHeaderNomal:
       if (_headers.find(_last_headers_key) == _headers.end()) {
         _headers.insert(
@@ -190,18 +203,18 @@ bool HttpRequest::parseHeaderValue(
       else {
         _headers[_last_headers_key] += (", " + std::string(at, len));
       }
-      break;
+      return true;
     default:
       return false;
   }
-  return true;
+  return false;
 }
 
 void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
   size_t  j = i;
   while (i < buf.size() && buf[i] != '\n') ++i;
 
-  if (j == i) {
+  if ((i > 0 && j == i - 1 && buf[i - 1] == '\r') || j == i) {
     _chunked_block_length = -1;
     return ;
   }

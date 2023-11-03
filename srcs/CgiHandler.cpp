@@ -4,18 +4,19 @@
 #include <sstream>
 #include "CgiHandler.hpp"
 #include <unistd.h>
+#include <iostream>
 
 
 CgiHandler::CgiHandler() {}
 
 CgiHandler::CgiHandler(
     HttpRequest& req, RouteRule& route_rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error)
-  : _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) {
+  : _idx(0), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) {
   this->setPipe();
 }
 
 CgiHandler::CgiHandler(const CgiHandler& other)
-  : _req(other._req), _route_rule(other._route_rule) {
+  : _idx(other._idx), _req(other._req), _route_rule(other._route_rule) {
   _pipe_from_cgi_fd[PIPE_READ] = other._pipe_from_cgi_fd[PIPE_READ];
   _pipe_from_cgi_fd[PIPE_WRITE] = other._pipe_from_cgi_fd[PIPE_WRITE];
   _pipe_to_cgi_fd[PIPE_READ] = other._pipe_to_cgi_fd[PIPE_READ];
@@ -29,6 +30,7 @@ CgiHandler::CgiHandler(const CgiHandler& other)
 CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   if (this == & other)
     return *this;
+  _idx = other._idx;
   _req = other._req;
   _route_rule = other._route_rule;
   _pipe_from_cgi_fd[PIPE_READ] = other._pipe_from_cgi_fd[PIPE_READ];
@@ -42,14 +44,22 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   return *this;
 }
 
+int CgiHandler::getCgiReqEntityIdx(void) { return _idx; }
+HttpRequest& CgiHandler::getRequest(void) { return _req; }
 const int& CgiHandler::getReadPipeFromCgi(void) const { return _pipe_from_cgi_fd[PIPE_READ]; }
+const int& CgiHandler::getWritePipetoCgi(void) const { return _pipe_to_cgi_fd[PIPE_WRITE]; }
 
+void CgiHandler::setCgiReqEntityIdx(int idx) { _idx = idx; }
 void CgiHandler::setPipe(void) throw(std::runtime_error) {
   if (pipe(_pipe_from_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
-  fcntl(_pipe_from_cgi_fd[0], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_from_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_from_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+
 
   if (pipe(_pipe_to_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
-  fcntl(_pipe_to_cgi_fd[0], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_to_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  fcntl(_pipe_to_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+
 }
 
 void CgiHandler::setupCgiEnvp(void) {
@@ -82,6 +92,9 @@ void CgiHandler::setupCgiEnvp(void) {
   ss << _port;
   setenv("SERVER_PORT", ss.str().c_str(), 1);
   setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+
+  if (!_req.getHeaderValue("x-secret-header-for-test").empty())
+    setenv("HTTP_X_SECRET_HEADER_FOR_TEST", _req.getHeaderValue("x-secret-header-for-test").c_str(), 1);
 }
 int CgiHandler::execute(void) throw(std::runtime_error) {
   pid_t pid = fork();
@@ -105,9 +118,11 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
       close(_pipe_from_cgi_fd[PIPE_WRITE]);
       close(_pipe_to_cgi_fd[PIPE_READ]);
 
-      if (write(_pipe_to_cgi_fd[PIPE_WRITE], &((_req.getEntity())[0]), _req.getEntity().size()) == -1)
-        throw std::runtime_error("error: pipe write error!");
-      close(_pipe_to_cgi_fd[PIPE_WRITE]);
+      // std::cout << "writing " << _req.getEntity().size() << " bytes in cgi..." << std::endl;
+      // if (write(_pipe_to_cgi_fd[PIPE_WRITE], &((_req.getEntity())[0]), _req.getEntity().size()) == -1)
+      //   throw std::runtime_error("error: pipe write error!");
+      // std::cout << "cgi write end..." << std::endl;
+      // close(_pipe_to_cgi_fd[PIPE_WRITE]);
   }
   return pid;
 }

@@ -23,7 +23,7 @@
 #define BUF_SIZE 4096
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
-#define KEEPALIVETIMEOUT 65
+#define KEEPALIVETIMEOUT 600
 
 class Server {
  private:
@@ -36,7 +36,7 @@ class Server {
   int                                         _kq;
   std::vector<struct kevent>                  _change_list;
 
-  std::map<int, Client>                       _clients;
+  std::map<int, Client>                       _clients;  // <socket_fd, Client>
   std::map<int, HttpResponse*>                _cgi_responses_on_pipe;  //<pipe_in_fd, pointer to response>
   std::map<int, HttpResponse*>                _cgi_responses_on_pid;  //<pid, pointer to response>
 
@@ -55,6 +55,7 @@ class Server {
   void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
   void      recvHttpRequest(int client_fd);
 
+  void      sendCgiRequest(int cgi_fd, void* req);
   void      recvCgiResponse(int cgi_fd);
 
   RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);

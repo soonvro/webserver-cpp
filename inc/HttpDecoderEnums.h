@@ -67,6 +67,7 @@ namespace HPS {
     kHeaderContentLength,
     kHeaderTransferEncoding,
     kHeaderFieldEnd,
+    kHeaderValueWhitespaceBeforeStart,
     kHeaderValueStart,
     kHeaderValueEnd,
     kMessageEnd,

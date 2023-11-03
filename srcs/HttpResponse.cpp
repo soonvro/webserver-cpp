@@ -76,8 +76,20 @@ void                                      HttpResponse::addContentLength(void) {
   _content_length = _body.size();
 }
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+bool                                      HttpResponse::isDir(const std::string& location){
+  struct stat stat_buf;
+  if (stat(location.c_str(), &stat_buf) != 0)
+    return false;
+  return S_ISDIR(stat_buf.st_mode);
+}
+
 void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
     const std::string& location = req.getLocation();
+    const std::string  suffix_of_location(location.substr(rule.getRoute().size(), location.size() - rule.getRoute().size()));
+
     _headers["Content-Type"] = "text/html";
     _headers["Connection"] = "keep-alive";
     _is_ready = true;
@@ -95,22 +107,24 @@ void                                      HttpResponse::publish(const HttpReques
         _body.assign(rule.getRedirection().second.begin(), rule.getRedirection().second.end());
       addContentLength();
       return ;
-    } else if (location[location.size() - 1] == '/') {
-      if (rule.getIndexPage().size()) {
+    } else if (isDir(rule.getRoot() + suffix_of_location)) {
+      if (rule.getIndexPage().size() &&
+          (rule.getRoute() == location || rule.getRoute() + '/' == location)) {  // index page event
         _status = 200;
-      if (!(req.getMethod() & HPS::kHEAD))
-          readFile(rule.getRoot() + "/" + rule.getIndexPage());
-      } else if (rule.getAutoIndex()){
+        if (!(req.getMethod() & HPS::kHEAD))
+            readFile(rule.getRoot() + "/" + rule.getIndexPage());
+      } else if (rule.getAutoIndex() &&
+                 (rule.getRoute() == location || rule.getRoute() + '/' == location)) {  // index page event
         _status = 200;
-      if (!(req.getMethod() & HPS::kHEAD))
-          readDir(rule.getRoot() + location);
+        if (!(req.getMethod() & HPS::kHEAD))
+            readDir(rule.getRoot() + suffix_of_location);
       } else{
         _status = 404;
       }
     }else{
       _status = 200;
       if (!(req.getMethod() & HPS::kHEAD))
-        readFile(rule.getRoot() + location);
+        readFile(rule.getRoot() + suffix_of_location);
     }
     } catch (FileNotFoundException &e){
       std::cout << "requested url not found" << std::endl;
@@ -136,7 +150,7 @@ void                                      HttpResponse::publishError(int status)
   std::stringstream ss;
   ss << _status;
   std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
-  _body.assign(body_str.begin(), body_str.end());
+  //_body.assign(body_str.begin(), body_str.end()); HEAD 요청시 반환하지 않아야한다.
   _headers["Content-Type"] = "text/html";
   if (status == 400){
     _headers["Connection"] = "close";

@@ -23,9 +23,11 @@ const char* g_case_ok[] = {
 //   "GET http://192.168.0.0:4242/index.html HTTP/1.1\r\n\n",
 //   "GET http://192.168.0.0:4242/index.html/next HTTP/1.1\r\n\n",
 //   "GET http://192.168.0.0:4242/index.html/next?name=boo HTTP/1.1\r\n\n",
-  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nHOst: totoro\n\n",
-  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nHOst: totoro\n\n",
-  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: totoro\n\n",
+//   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nHOst: totoro\n\n",
+//   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nHOst: totoro\n\n",
+//   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: totoro\n\n",
+//   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: ,  , toto, ,,\n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: ,  ,, ,,\nhost: a\n\n",
 //   "GET / HTTP/1.1\r\nConTent-Length: 4\n\n",
 //   "GET / HTTP/1.1\r\nConTent-Length: 4, 4 , , \n\n",
 //   "GET / HTTP/1.1\r\nConTent-Length: 4, 4 , , 4\n\n",
@@ -64,8 +66,11 @@ const char* g_case_failure[] = {
   "GET http://:4242 HTTP/1.1\r\n\n",
   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\n\n",
   "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: totoro\nHOst: totoro\n\n",
-//   "GET / HTTP/1.1\nHost: www.example.com\nConTent-Length: 4, 4 ,\nConnection: kee p-alive\n\n",
-//   "GET / HTTP/1.1\nHost: www.ex ample.com\nConTent-Length: 4, 4 ,\nConnection: keep-alive\n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: haha ha\nX-header: hahaha\nHOst: totoro\n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: tot oro\n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: \n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: ,  ,, ,,\n\n",
+  "GET http://192.168.0.0:4242/index.html/next?name=boo&age=23 HTTP/1.1\r\nX-header: hahaha\nX-header: hahaha\nHOst: ,  , to to, ,,\n\n",
 };
 
 const char* g_methods[] = {"GET", "HEAD", "POST", "DELETE"};
@@ -137,5 +142,4 @@ void test_HttpDecoder(void) {
 
 // int main() {
 //   test_HttpDecoder();
-
 // }

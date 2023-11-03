@@ -144,44 +144,48 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
         break;
 
       case HPS::kHeaderFieldEnd:
-        if (_p != p_prev && _c == ':') {
-          if (isStrNCaseInsensOfLhs(p_prev, _p, CONNECTION,
-                                    HPS_LITERAL_STRLEN(CONNECTION))) {
-            _state = HPS::kHeaderConnection;
-          }
-          else if (isStrNCaseInsensOfLhs(p_prev, _p, CONTENT_LENGTH,
-                                    HPS_LITERAL_STRLEN(CONTENT_LENGTH))) {
-            _state = HPS::kHeaderContentLength;
-          }
-          else if (isStrNCaseInsensOfLhs(p_prev, _p, TRANSFER_ENCODING,
-                                    HPS_LITERAL_STRLEN(TRANSFER_ENCODING))) {
-            _state = HPS::kHeaderTransferEncoding;
-          }
-          else {
-            if (_cb.on_header_field) {
-              if (!_cb.on_header_field(
-                    this, p_prev, static_cast<unsigned int>(_p - p_prev))) {
-                _state = HPS::kDead;
-                break;
-              }
-            }
-            _state = HPS::kHeaderValueStart;
-          }
-          this->readNBytes(1);
-          while (HPS_IS_WHITESPACE(_c)) this->readNBytes(1);
-          if (HPS_IS_NEWLINE(_p)) {
-            _state = HPS::kDead;
-            break;
-          }
+        if (_p == p_prev || _c != ':') {
+          _state = HPS::kDead;
+          break;
         }
-        else _state = HPS::kDead;
+        if (isStrNCaseInsensOfLhs(p_prev, _p, CONNECTION,
+                                  HPS_LITERAL_STRLEN(CONNECTION))) {
+          _state = HPS::kHeaderConnection;
+        }
+        else if (isStrNCaseInsensOfLhs(p_prev, _p, CONTENT_LENGTH,
+                                  HPS_LITERAL_STRLEN(CONTENT_LENGTH))) {
+          _state = HPS::kHeaderContentLength;
+        }
+        else if (isStrNCaseInsensOfLhs(p_prev, _p, TRANSFER_ENCODING,
+                                  HPS_LITERAL_STRLEN(TRANSFER_ENCODING))) {
+          _state = HPS::kHeaderTransferEncoding;
+        }
+        else {
+          if (_cb.on_header_field) {
+            if (!_cb.on_header_field(
+                  this, p_prev, static_cast<unsigned int>(_p - p_prev))) {
+              _state = HPS::kDead;
+              break;
+            }
+          }
+          _state = HPS::kHeaderValueStart;
+        }
+        this->readNBytes(1);
+        while (HPS_IS_WHITESPACE(_c) || _c == ',') this->readNBytes(1);
+        if (HPS_IS_NEWLINE(_p)) {
+          this->readNBytes(_c == '\n' ? 1 : 2);
+          _state = HPS::kHeaderFieldStart;
+        }
         break;
 
       case HPS::kHeaderValueStart:
         p_prev = _p;
-        while (HPS_IS_WHITESPACE(_c) || HPS_IS_VCHAR(_c)) this->readNBytes(1);
-        if (HPS_IS_NEWLINE(_p)) _state = HPS::kHeaderValueEnd;
-        else _state = HPS::kDead;
+        while (_c != ',' && !HPS_IS_WHITESPACE(_c) && HPS_IS_VCHAR(_c)) this->readNBytes(1);  // read value
+        if (_p == p_prev) {
+          _state = HPS::kDead;
+          break;
+        }
+        _state = HPS::kHeaderValueEnd;
         break;
 
       case HPS::kHeaderValueEnd:
@@ -192,8 +196,18 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
             break;
           }
         }
-        this->readNBytes(_c == '\n' ? 1 : 2);
-        _state = HPS::kHeaderFieldStart;
+        while (HPS_IS_WHITESPACE(_c)) this->readNBytes(1);  // read white space after value
+        if (_c != ',' && HPS_IS_VCHAR(_c)) {  // white space between value and value
+          _state = HPS::kDead;
+          break;
+        }
+        while (HPS_IS_WHITESPACE(_c) || _c == ',') this->readNBytes(1);  // read until new value
+        if (HPS_IS_NEWLINE(_p)) {
+          this->readNBytes(_c == '\n' ? 1 : 2);
+          _state = HPS::kHeaderFieldStart;
+          break;
+        }
+        _state = HPS::kHeaderValueStart;
         break;
 
       case HPS::kDead:

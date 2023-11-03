@@ -71,6 +71,8 @@ class HttpResponse {
     void                                      setIsCgi(bool is_cgi);
 
     void                                      addContentLength(void);
+    bool                                      isDir(const std::string& location);
+
     void                                      publish(const HttpRequest& req, const RouteRule& r);
     void                                      publishError(int status);
     void                                      setHeader(const std::string& key, const std::string& value); 

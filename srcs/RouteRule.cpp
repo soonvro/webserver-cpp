@@ -3,7 +3,7 @@
 #include "HttpDecoderEnums.h"
 
 RouteRule::RouteRule()
-    : _accepted_methods(0xFFFFFFFF),
+    : _accepted_methods(0 | 1 << (HPS::kGET) | 1 << (HPS::kPOST | 1 << (HPS::kDELETE))),
       _redirection(std::make_pair(0, "")),
       _autoIndex(false),
       _max_client_body_size(0),
