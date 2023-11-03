@@ -11,7 +11,7 @@
 
 #define DEBUGMOD 1
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
-#define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 0)
+#define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
   if (!DEBUG_DETAIL_KEVENT) return;
@@ -460,7 +460,7 @@ void Server::run(void) {
         }
         std::cout << std::endl;
       // socket disconnect event
-      } else if (curr_event->flags & EV_EOF && _server_sockets.count(curr_event->ident)) {
+      } else if ((curr_event->flags & EV_EOF) && _clients.count(curr_event->ident)) {
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
