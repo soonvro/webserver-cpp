@@ -10,44 +10,65 @@
 
 
 #define DEBUGMOD 1
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
+#define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 0)
+
+void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
+  if (!DEBUG_DETAIL_KEVENT) return;
+  if (curr_event->filter == EVFILT_TIMER) return;
+
+  std::string evfilt_str;
+  if (curr_event->filter == EVFILT_READ) evfilt_str = "READ";
+  else if (curr_event->filter == EVFILT_WRITE) evfilt_str = "WRITE";
+  else if (curr_event->filter == EVFILT_PROC) evfilt_str = "PROCESS";
+  std::cout << "EVFILT: " << evfilt_str << std::endl ;
+
+  if (curr_event->flags & EV_ERROR) std::cout << "EV_ERROR!" << std::endl;
+  if (curr_event->flags & EV_EOF) std::cout << "EV_EOF!" << std::endl;
+
+  std::cout << "New kevent :" << new_event << " cur idx: " << i << std::endl;
+  std::cout << "curr ident: " << curr_event->ident << ", data: " << curr_event->data << std::endl;
+  std::cout << std::endl;
+}
 
 void  printReq(const HttpRequest& req, const std::vector<char> data){
   (void)data;
-  if (!DEBUGMOD){
-    return ;
+  if (!DEBUGMOD) return;
+  if (req.getIsChunked() && !req.getEntityArrived()) { // if not complete chunked
+    std::cout << "Now receiving chunked data\n" << std::endl;
+    return;
   }
   std::map<std::string, std::string>::const_iterator i = req.getHeaders().begin();
   std::cout << ">>>> REQUEST MESSAGE >>>>\n";
   const char* methods[] = {"GET", "HEAD", "POST", "DELETE"};
-    std::cout << methods[req.getMethod() - 1] << ' ';
-  std::cout  << req.getHost() << \
-  req.getLocation() << "?" << req.getQueries()<< " HTTP/1.1" <<std::endl;
+  std::cout << methods[req.getMethod() - 1] << ' ' <<
+               req.getLocation() <<
+               (req.getQueries().empty() ? "" : "?" + req.getQueries()) <<
+               " HTTP/1.1" <<std::endl;
   std::cout << "Content-Length: " << req.getContentLength() << std::endl;
-  if (req.getIsChunked()) std::cout << "is Chuncked Body !!" << std::endl;
+  if (req.getIsChunked()) std::cout << "Transfer-Encoding: chunked" << std::endl;
   while (i != req.getHeaders().end()){
     std::cout << i->first << ": " << i->second << std::endl;
     i++;
   }
   std::cout << "Host: " << req.getHost() << std::endl;
-  // const std::vector<char>& entity = req.getEntity();
-  // std::vector<char>::const_iterator j = entity.begin();
-  // while (j != req.getEntity().end()){
-  //   std::cout << *j;
-  // }
-  std::cout<< std::endl;
+  std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 
-  // std::cout << "--------------------------------------" << std::endl;
-  // std::cout << std::string(data.begin(), data.end()) << std::endl;
-  // std::cout << "--------------------------------------" << std::endl;
+  if (!DEBUG_DETAIL_RAWDATA) return;
+  std::cout << ">>>>----------------------------------" << std::endl;
+  std::cout << std::string(data.begin(), data.end()) << std::endl;
+  std::cout << ">>>>----------------------------------\n" << std::endl;
 }
 
-void  printRes(std::string header, const char* data, size_t size){
-  if (!DEBUGMOD){
-    return ;
-  }
-  std::string res(data, data + size);
+void  printRes(std::string header, const char* body, size_t body_size){
+  if (!DEBUGMOD) return;
   std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << std::endl;
-  // std::cout << "<<<< RESPONSE MESSAGE <<<<\n" << header << "\n\n" << res << '\n' << std::endl;
+  std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<" << std::endl;
+
+  if (!DEBUG_DETAIL_RAWDATA || body_size == 0) return;
+  std::cout << "<<<<----------------------------------" << std::endl;
+  std::cout << std::string(body, body + body_size) << std::endl;
+  std::cout << "<<<<----------------------------------\n" << std::endl;
 }
 
 Server::Server(const char* configure_file) {
@@ -105,9 +126,10 @@ void Server::connectClient(int server_socket) {
   char client_ip[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
   uint16_t client_port = ntohs(client_address.sin_port);
-  std::cout << "Accepted connection from " << client_ip << ":" << client_port << std::endl;
   setSocketOption(client_socket);
-  std::cout << "accept new client: " << client_socket << std::endl;
+
+  std::cout << "Accepted connection from " << client_ip << ":" << client_port <<
+               ", Client fd: " << client_socket << '\n' << std::endl;
 
   changeEvents(_change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0,
                 0, NULL);
@@ -125,12 +147,12 @@ void Server::sendHttpResponse(int client_fd) {
     const char* buf = encoded_response.c_str();
     write(client_fd, buf, std::strlen(buf));
     buf = &(responses.front().getBody())[0];
-    printRes(encoded_response, &(responses.front().getBody())[0], responses.front().getContentLength());
     fcntl(client_fd, F_SETFL, 0, FD_CLOEXEC);
     int n = write(client_fd, buf, responses.front().getContentLength());
     fcntl(client_fd, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+    printRes(encoded_response, &(responses.front().getBody())[0], responses.front().getContentLength());
     client.popRess();
-    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
+    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << '\n' << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
   else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
@@ -166,9 +188,6 @@ void Server::recvHttpRequest(int client_fd) {
     disconnectClient(client_fd);
     return ;
   }
-  std::cout << "----------------------------------------------------------" << std::endl;
-  std::cout << std::string(cli.getBuf().begin(), cli.getBuf().end()) << std::endl;
-  std::cout << "----------------------------------------------------------" << std::endl;
 
   int idx;
   if (cli.getReqs().size() > 0) {
@@ -199,6 +218,7 @@ void Server::recvHttpRequest(int client_fd) {
           res.publishError(500);
           std::cout << e.what() << std::endl;
         }
+        printReq(last_request, cli.getBuf());
         cli.eraseBuf();
         cli.popReqs();
       } catch (HttpRequest::ChunkedException& e) {
@@ -278,7 +298,7 @@ void Server::recvHttpRequest(int client_fd) {
     }
     cli.eraseBuf();
   }
-  std::cout << "response size: " << cli.getRess().size() << std::endl;
+  std::cout << "response size: " << cli.getRess().size() << '\n' << std::endl;
   if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
@@ -288,22 +308,21 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler){
 
   int n;
   int idx = p_handler->getCgiReqEntityIdx();
-  std::cout << "Cgi request send idx : " << idx << std::endl;
-  // while ((n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], p_handler->getRequest().getEntity().size() - idx)) != 0) {
-  //   if (n == -1) {
-  //     if (errno == EWOULDBLOCK || errno == EAGAIN) break ; // NON-BLOCK socket read buff 비어있을 때
-  //     throw std::runtime_error("Error: read error.");
-  //   }
-  //   idx += n;
-  // }
+
+  if (DEBUGMOD && DEBUG_DETAIL_KEVENT) {
+    std::cout << "Cgi request send idx : " << idx << std::endl;
+  }
+
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], p_handler->getRequest().getEntity().size() - idx);
   if (n == -1) {
     if (errno == EWOULDBLOCK || errno == EAGAIN) return ; // NON-BLOCK socket read buff 꽉찼을 때
     throw std::runtime_error("Error: read error. <sendCgiRequest>");
   }
   idx += n;
-  
-  std::cout << "send end"  << std::endl;
+
+  if (DEBUGMOD && DEBUG_DETAIL_KEVENT) {
+    std::cout << "send end"  << std::endl;
+  }
 
   p_handler->setCgiReqEntityIdx(idx);
   if (n == 0) close(cgi_fd);
@@ -413,7 +432,7 @@ void Server::init(void) {
 }
 
 void Server::run(void) {
-  std::cout << "Server started." << std::endl;
+  std::cout << "Server started." << '\n' << std::endl;
   int new_event;
   struct kevent event_list[EVENT_LIST_SIZE];
   struct kevent* curr_event;
@@ -424,14 +443,12 @@ void Server::run(void) {
     _change_list.clear();
     for (int i = 0; i < new_event; ++i) {
       curr_event = &event_list[i];
-      if (curr_event -> ident != 0){
-        std::cout << "New kevent :" << new_event << " cur idx: " << i << std::endl;
-        std::cout << "curr ident: " << curr_event->ident << ", data: " << curr_event->data << std::endl;
-        std::cout << "EVFILT: " << curr_event->filter << "\n" << std::endl ;
-      }
-      if (curr_event->flags & EV_ERROR) {  // error event
+      if (DEBUGMOD) printKeventLog(new_event, i, curr_event);
+      // error event
+      if (curr_event->flags & EV_ERROR) {
         handleErrorKevent(curr_event->ident);
-      } else if (curr_event->fflags & NOTE_EXIT) { //  cgi process exit event
+      // cgi process exit event
+      } else if (curr_event->filter == EVFILT_PROC && (curr_event->fflags & NOTE_EXIT)) {
         int status = -1;
         waitpid(curr_event->ident, &status, WNOHANG);
         std::cout << "waitpid :" << curr_event->ident << " status: " << WEXITSTATUS(status) << std::endl;
@@ -441,7 +458,9 @@ void Server::run(void) {
           res.publishError(502);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
-      } else if (curr_event->flags & EV_EOF && _server_sockets.count(curr_event->ident)) {  // socket disconnect event
+        std::cout << std::endl;
+      // socket disconnect event
+      } else if (curr_event->flags & EV_EOF && _server_sockets.count(curr_event->ident)) {
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
@@ -460,7 +479,9 @@ void Server::run(void) {
         } else {
           sendCgiRequest(curr_event->ident, curr_event->udata);
         }
-      } else std::cout << "Who you are???" << std::endl;
+      } else {
+        std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Who you are??? XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
+      }
     }
   }
 }
