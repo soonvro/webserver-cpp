@@ -91,7 +91,7 @@ class HttpRequest {
 
     long long                           _chunked_block_length;
 
-    bool                                _has_host;
+    bool                                _is_host_header_comein;
     bool                                _is_chunked;
     bool                                _is_connection_keep_alive;
     bool                                _is_connection_close;

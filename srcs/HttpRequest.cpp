@@ -9,7 +9,7 @@
 
 HttpRequest::HttpRequest() 
   : _h_field(kHeaderNo),_content_length(0), _chunked_block_length(0),
-  _has_host(false), _is_chunked(false), _is_connection_keep_alive(false),
+  _is_host_header_comein(false), _is_chunked(false), _is_connection_keep_alive(false),
   _is_connection_close(false), _is_content_length(false), _has_chunked_len(false),
   _header_arrived(false), _entity_arrived(false) {}
 
@@ -150,7 +150,7 @@ bool HttpRequest::parseUrl(
 
 bool HttpRequest::saveRquestData(
     HttpDecoder* hd) {
-  if (!_has_host) return false;
+  if (!_is_host_header_comein) return false;
   _method         = hd->_method;
   _http_major     = hd->_http_major;
   _http_minor     = hd->_http_minor;
@@ -172,8 +172,6 @@ bool HttpRequest::recognizeHeaderField(
     HttpDecoder* hd, const char *at, unsigned int len) {
   (void)hd;
   if (this->isStrCase(at, len, "host")) {
-    if (_has_host) return false;
-    _has_host = true;
     _h_field = kHeaderHost;
   }
   else {
@@ -190,10 +188,12 @@ bool HttpRequest::parseHeaderValue(
   unsigned int host_end = 0;
   switch (_h_field) {
     case kHeaderHost:
-      if (!_host.empty()) break;
+      if (_is_host_header_comein) return false;  // multiple host header
+      _is_host_header_comein = true;
+      if (!_host.empty()) return true;  // request target has host
       for (; (host_end < len && at[host_end] != ':'); ++host_end);
       _host.assign(at, host_end);
-      break;
+      return true;
     case kHeaderNomal:
       if (_headers.find(_last_headers_key) == _headers.end()) {
         _headers.insert(
@@ -203,11 +203,11 @@ bool HttpRequest::parseHeaderValue(
       else {
         _headers[_last_headers_key] += (", " + std::string(at, len));
       }
-      break;
+      return true;
     default:
       return false;
   }
-  return true;
+  return false;
 }
 
 void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
