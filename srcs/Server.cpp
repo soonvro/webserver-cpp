@@ -319,11 +319,12 @@ void  Server::recvCgiResponse(int cgi_fd) {
     res.setStatusMessage("Found");
   } else if (cgi_type == kLocalRedir){
     // res.setIsReady(false);
-    // changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
-    // res.initializeCgiProcess();
-    // _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
-    // changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-    // res.cgiExecute();
+    // HttpRequest req = cgi_handler.getRequest();
+    // req.setQueries("");
+    // req.setLocation(cgi_response.getHeader("Location"));
+    // initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), client.getPort(), client.getClientFd());
+    // _is_cgi = true;
+    // setCgiSetting(cli.backRess());
     return ;
   } else {
     const RouteRule& rule = cgi_handler.getRouteRule();
