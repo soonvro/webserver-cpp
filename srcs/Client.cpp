@@ -25,7 +25,7 @@ const int&                        Client::getPort(void) const { return _port; }
 const std::vector<char>&          Client::getBuf(void) const { return _buf; }
 const size_t&                     Client::getReadIdx(void) const { return _read_idx; }
 const std::queue<HttpRequest>&    Client::getReqs(void) const { return _reqs; }
-const std::queue<HttpResponse>&   Client::getRess(void) const { return _ress; }
+std::queue<HttpResponse>&   Client::getRess(void) { return _ress; }
 const bool&                       Client::getEof(void) const { return _has_eof; }
 const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
 const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
