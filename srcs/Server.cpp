@@ -149,11 +149,11 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
       event_size -= write(client_fd, buf, std::strlen(buf));
     }
     int n = write(client_fd, &(responses.front().getBody())[idx],\
-         (int64_t)responses.front().getBody().size() > event_size ? event_size : responses.front().getBody().size());
+         (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
     if (n < 0) {
       responses.front().setEntityIdx(idx);
       if (errno == EWOULDBLOCK || errno == EAGAIN) return ; // NON-BLOCK socket read buff 비어있을 때
-      throw std::runtime_error("Error: read error. <recvCgiResponse>");
+      throw std::runtime_error("Error: read error. <sendHttpResponse>");
     }
     idx += n;
     responses.front().setEntityIdx(idx);
@@ -307,7 +307,7 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
     std::cout << "Cgi request send idx : " << idx << std::endl;
   }
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], \
-    (int64_t)p_handler->getRequest().getEntity().size() > event_size ? event_size : p_handler->getRequest().getEntity().size());
+    (int64_t)p_handler->getRequest().getEntity().size() - idx > event_size ? event_size : p_handler->getRequest().getEntity().size() - idx);
   if (n < 0) {
     if (errno == EWOULDBLOCK || errno == EAGAIN)
       return ;
@@ -320,7 +320,7 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   }
 
   p_handler->setCgiReqEntityIdx(idx);
-  if ((size_t)idx == p_handler->getRequest().getEntity().size()) close(cgi_fd);
+  if ((size_t)idx >= p_handler->getRequest().getEntity().size()) close(cgi_fd);
 }
 
 
@@ -503,7 +503,7 @@ void Server::run(void) {
 
 const RouteRule* Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
   std::pair<std::string, int> key(req.getHost(), _clients[client_fd].getPort());
-  if (_hosts.count(key))
+  if (_hosts.count(key))  
     return (_hosts[key].getRouteRule(req.getLocation()));
   else
     return (_default_host.getRouteRule(req.getLocation()));

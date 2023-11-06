@@ -41,9 +41,7 @@ void                              Client::clearBuf(void) {
 }
 
 void                              Client::addBuf(const char* buf, size_t size) {
-  for (size_t i = 0; i < size; ++i) {
-    _buf.push_back(buf[i]);//insert 로 바꾸는게 빠를거같아요.
-  }
+  _buf.insert(_buf.end(), buf, buf + size);
 }
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
 void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
