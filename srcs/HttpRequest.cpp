@@ -7,13 +7,53 @@
 /*                                   Pubilc                                   */
 /******************************************************************************/
 
-HttpRequest::HttpRequest() 
-  : _h_field(kHeaderNo),_content_length(0), _chunked_block_length(0),
-  _is_host_header_comein(false), _is_chunked(false), _is_connection_keep_alive(false),
-  _is_connection_close(false), _is_content_length(false), _has_chunked_len(false),
+// HttpRequest::HttpRequest() 
+//   : _h_field(kHeaderNo),_content_length(0), _chunked_block_length(0),
+//   _is_host_header_comein(false), _is_chunked(false), _is_connection_keep_alive(false),
+//   _is_connection_close(false), _is_content_length(false), _has_chunked_len(false),
+//   _header_arrived(false), _entity_arrived(false) {}
+
+HttpRequest::HttpRequest()
+  : _method(HPS::kHEAD), _http_major(0),
+  _http_minor(0), _port(0), _h_field(kHeaderNo),
+  _content_length(0), _chunked_block_length(0),
+  _is_host_header_comein(false), _is_chunked(false),
+  _is_connection_keep_alive(false), _is_connection_close(false),
+  _is_content_length(false), _has_chunked_len(false),
   _header_arrived(false), _entity_arrived(false) {}
 
 HttpRequest::~HttpRequest() {}
+
+HttpRequest::HttpRequest(const HttpRequest& other) {
+  *this = other;
+}
+
+HttpRequest& HttpRequest::operator=(const HttpRequest& other){
+  if (this == &other)
+    return *this;
+  _method = other._method;
+  _http_major = other._http_major;
+  _http_minor = other._http_minor;
+  _host = other._host;
+  _location = other._location;
+  _port = other._port;
+  _queries = other._queries;
+  _h_field = other._h_field;
+  _last_headers_key = other._last_headers_key;
+  _headers = other._headers;
+  _content_length = other._content_length;
+  _chunked_block_length = other._chunked_block_length;
+  _is_host_header_comein = other._is_host_header_comein;
+  _is_chunked = other._is_chunked;
+  _is_connection_keep_alive = other._is_connection_keep_alive;
+  _is_connection_close = other._is_connection_close;
+  _is_content_length = other._is_content_length;
+  _has_chunked_len = other._has_chunked_len;
+  _entity = other._entity;
+  _header_arrived = other._header_arrived;
+  _entity_arrived = other._entity_arrived;
+  return *this;
+}
 
 // Getters
 const HPS::Method&                        HttpRequest::getMethod() const { return _method; }
@@ -244,20 +284,28 @@ void  HttpRequest::chunkedSetting(const std::vector<char>& buf, size_t& i) {
     else if (_has_chunked_len && _chunked_block_length == 0) _entity_arrived = true;
     else if (_chunked_block_length < 0) throw ChunkedException();
   }
-  for (; i < buf.size(); ++i) {
-    if (_chunked_block_length == 0) {
-      if (_has_chunked_len && i < buf.size()) {
-        if (buf[i] == '\r' && i < buf.size() - 1) ++i;
-        if (buf[i] == '\n') {
-          _has_chunked_len = false; ++i;
-          chunkedSetting(buf, i);
-        }
-        else if (buf[i] != '\r') throw ChunkedException();
+  if (_has_chunked_len) {
+    size_t  insert_idx = _chunked_block_length;
+    if (insert_idx + 1 <= buf.size() - i) {
+      if (buf[i] == '\r' && i < buf.size() - 1) ++i;
+      if (buf[i] == '\n') {
+        _has_chunked_len = false; ++i;
+        if (!_entity_arrived) chunkedSetting(buf, i);
+        return ;
       }
-      break ;
+      _entity.insert(_entity.end(), buf.begin() + i, buf.begin() + i + insert_idx);
+      i += insert_idx;
+      if (buf[i] == '\r' && i < buf.size() - 1) ++i;
+      if (buf[i] == '\n') {
+        _has_chunked_len = false; ++i;
+        if (!_entity_arrived) chunkedSetting(buf, i);
+      }
+    } else {
+      insert_idx = buf.size() - i;
+      _chunked_block_length -= insert_idx;
+      _entity.insert(_entity.end(), buf.begin() + i, buf.begin() + i + insert_idx);
+      i += insert_idx;
     }
-    _entity.push_back(buf[i]);
-    --_chunked_block_length;
   }
 }
 

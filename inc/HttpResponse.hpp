@@ -14,8 +14,6 @@ class Client;
 #include <map>
 #include <iostream>
 
-#define BUF_SIZE 4096
-
 class HttpResponse {
   private:
 
@@ -39,6 +37,7 @@ class HttpResponse {
     CgiHandler                                _cgi_handler;
 
     HPS::Method                               _method;
+    int                                       _entity_idx;
 
     void                                      readDir(const std::string& path);
 
@@ -63,7 +62,7 @@ class HttpResponse {
     const int&                                getCgiPipeIn(void) const;
     CgiHandler&                               getCgiHandler(void);
     HPS::Method                               getMethod(void) const;
-
+    const int&                                getEntityIdx(void) const;
 
     void                                      setHttpMajor(unsigned short http_major);
     void                                      setHttpMinor(unsigned short http_minor);
@@ -75,6 +74,7 @@ class HttpResponse {
     void                                      setBody(const std::vector<char>& body);
     void                                      setIsReady(bool is_ready);
     void                                      setIsCgi(bool is_cgi);
+    void                                      setEntityIdx(int entity_idx);
 
     void                                      addContentLength(void);
     bool                                      isDir(const std::string& location);

@@ -8,7 +8,9 @@
 #include "Client.hpp"
 
 HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD) {}
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD), _entity_idx(0) {}
+
+#define BUF_SIZE 4096
 
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
@@ -165,7 +167,8 @@ const bool&                               HttpResponse::getIsReady() const { ret
 const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
 const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipeFromCgi(); }
 CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
-HPS::Method                         HttpResponse::getMethod(void) const { return _method; }
+HPS::Method                               HttpResponse::getMethod(void) const { return _method; }
+const int&                                HttpResponse::getEntityIdx(void) const { return _entity_idx; };
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -179,3 +182,4 @@ void                                      HttpResponse::setBody(const std::vecto
 void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
+void                                      HttpResponse::setEntityIdx(int entity_idx) { _entity_idx = entity_idx; }

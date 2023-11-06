@@ -18,6 +18,9 @@ class HttpRequest {
     HttpRequest();
     ~HttpRequest();
 
+    HttpRequest(const HttpRequest& other);
+    HttpRequest& operator=(const HttpRequest& other);
+
     const HPS::Method&                        getMethod(void) const;
     const std::string&                        getHost(void) const;
     const std::string&                        getLocation(void) const;

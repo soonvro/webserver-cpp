@@ -28,7 +28,7 @@ class Client {
     const std::vector<char>&          getBuf(void) const;
     const size_t&                     getReadIdx(void) const;
     const std::queue<HttpRequest>&    getReqs(void) const;
-    const std::queue<HttpResponse>&   getRess(void) const;
+    std::queue<HttpResponse>&   getRess(void);
     const bool&                       getEof(void) const;
     const int&                        getClientFd() const;
     const int&                        getPort(void) const;

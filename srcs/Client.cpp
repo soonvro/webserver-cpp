@@ -1,9 +1,9 @@
 #include "Client.hpp"
 
-Client::Client() : _read_idx(0), _port(-1) {}
+Client::Client() : _read_idx(0), _has_eof(false), _client_fd(-1), _port(-1) {}
 
 Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval) 
-  : _read_idx(0), _client_fd(client_fd), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
+  : _read_idx(0), _has_eof(false), _client_fd(client_fd), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
 
 Client& Client::operator=(const Client& other) {
   if (this == &other)
@@ -25,7 +25,7 @@ const int&                        Client::getPort(void) const { return _port; }
 const std::vector<char>&          Client::getBuf(void) const { return _buf; }
 const size_t&                     Client::getReadIdx(void) const { return _read_idx; }
 const std::queue<HttpRequest>&    Client::getReqs(void) const { return _reqs; }
-const std::queue<HttpResponse>&   Client::getRess(void) const { return _ress; }
+std::queue<HttpResponse>&   Client::getRess(void) { return _ress; }
 const bool&                       Client::getEof(void) const { return _has_eof; }
 const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
 const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
@@ -41,9 +41,7 @@ void                              Client::clearBuf(void) {
 }
 
 void                              Client::addBuf(const char* buf, size_t size) {
-  for (size_t i = 0; i < size; ++i) {
-    _buf.push_back(buf[i]);//insert 로 바꾸는게 빠를거같아요.
-  }
+  _buf.insert(_buf.end(), buf, buf + size);
 }
 void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
 void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
@@ -77,9 +75,7 @@ int                               Client::headerEndIdx(const size_t& start) {
 const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
   std::vector<char> sub_buf;
 
-  for (size_t i = start;i < end; ++i) {
-    sub_buf.push_back(_buf[i]);//insert가 더 빠를거같아요. 
-  }
+  sub_buf.insert(sub_buf.begin(), _buf.begin() + start, _buf.begin() + end);
   return sub_buf;
 }
 

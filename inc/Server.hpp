@@ -20,7 +20,6 @@
 #include "Host.hpp"
 #include "CgiHandler.hpp"
 
-#define BUF_SIZE 4096
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
 #define KEEPALIVETIMEOUT 600
@@ -51,13 +50,13 @@ class Server {
 
   void      connectClient(int server_socket);
 
-  void      sendHttpResponse(int client_fd);
+  void      sendHttpResponse(int client_fd, int64_t event_size);
   // void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
   void      setCgiSetting(HttpResponse& res); 
-  void      recvHttpRequest(int client_fd);
+  void      recvHttpRequest(int client_fd, int64_t event_size);
 
-  void      sendCgiRequest(int cgi_fd, void* req);
-  void      recvCgiResponse(int cgi_fd);
+  void      sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
+  void      recvCgiResponse(int cgi_fd, int64_t event_size);
 
   const RouteRule* findRouteRule(const HttpRequest& req, const int& client_fd);
 
