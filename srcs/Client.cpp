@@ -77,9 +77,7 @@ int                               Client::headerEndIdx(const size_t& start) {
 const std::vector<char>  Client::subBuf(const size_t start, const size_t end) {
   std::vector<char> sub_buf;
 
-  for (size_t i = start;i < end; ++i) {
-    sub_buf.push_back(_buf[i]);//insert가 더 빠를거같아요. 
-  }
+  sub_buf.insert(sub_buf.begin(), _buf.begin() + start, _buf.begin() + end);
   return sub_buf;
 }
 

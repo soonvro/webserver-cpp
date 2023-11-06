@@ -14,8 +14,6 @@ class Client;
 #include <map>
 #include <iostream>
 
-#define BUF_SIZE 4096
-
 class HttpResponse {
   private:
 

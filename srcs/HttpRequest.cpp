@@ -284,20 +284,22 @@ void  HttpRequest::chunkedSetting(const std::vector<char>& buf, size_t& i) {
     else if (_has_chunked_len && _chunked_block_length == 0) _entity_arrived = true;
     else if (_chunked_block_length < 0) throw ChunkedException();
   }
-  for (; i < buf.size(); ++i) {
-    if (_chunked_block_length == 0) {
-      if (_has_chunked_len && i < buf.size()) {
-        if (buf[i] == '\r' && i < buf.size() - 1) ++i;
-        if (buf[i] == '\n') {
-          _has_chunked_len = false; ++i;
-          chunkedSetting(buf, i);
+  if (_has_chunked_len) {
+    for (; i < buf.size(); ++i) {
+      if (_chunked_block_length == 0) {
+        if (_has_chunked_len && i < buf.size()) {
+          if (buf[i] == '\r' && i < buf.size() - 1) ++i;
+          if (buf[i] == '\n') {
+            _has_chunked_len = false; ++i;
+            if (!_entity_arrived) chunkedSetting(buf, i);
+          }
+          else if (buf[i] != '\r') throw ChunkedException();
         }
-        else if (buf[i] != '\r') throw ChunkedException();
+        break ;
       }
-      break ;
+      _entity.push_back(buf[i]);
+      --_chunked_block_length;
     }
-    _entity.push_back(buf[i]);
-    --_chunked_block_length;
   }
 }
 

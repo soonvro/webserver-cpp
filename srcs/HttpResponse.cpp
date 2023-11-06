@@ -10,6 +10,8 @@
 HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
   _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD), _entity_idx(0) {}
 
+#define BUF_SIZE 4096
+
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
   if (i.fail()){
