@@ -1,5 +1,5 @@
-#ifndef HOST_H_
-#define HOST_H_
+#ifndef HOST_HPP_
+#define HOST_HPP_
 
 #include <map>
 #include <string>
@@ -24,7 +24,7 @@ class Host {
   const std::string&                      getName() const;
   int                                     getPort() const;
   const std::map<std::string, RouteRule>& getRouteRules() const;
-  const RouteRule&                        getRouteRule(const std::string& route) const;
+  const RouteRule*                        getRouteRule(const std::string& route) const;
 
   void                                    setName(const std::string& name);
   void                                    setPort(int port);
@@ -32,11 +32,6 @@ class Host {
   void setRouteRules(const std::map<std::string, RouteRule>& routeRules);
 
   void addRouteRule(const std::string& route, const RouteRule& rule);
-
-  class NoRouteRuleException : public std::exception {
-   public:
-    const char* what() const throw() { return "RouteRule not found!"; }
-  };
 };
 
 #endif

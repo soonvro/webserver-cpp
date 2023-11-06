@@ -11,7 +11,7 @@
 
 #define DEBUGMOD 1
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
-#define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
+#define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 0)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
   if (!DEBUG_DETAIL_KEVENT) return;
@@ -31,10 +31,10 @@ void printKeventLog(const int& new_event, const int& i, const struct kevent* cur
   std::cout << std::endl;
 }
 
-void  printReq(const HttpRequest& req, const std::vector<char> data){
+void  printReq(const HttpRequest& req, const std::vector<char> data, bool force_print){
   (void)data;
   if (!DEBUGMOD) return;
-  if (req.getIsChunked() && !req.getEntityArrived()) { // if not complete chunked
+  if (req.getIsChunked() && !req.getEntityArrived() && !force_print) { // if not complete chunked
     std::cout << "Now receiving chunked data\n" << std::endl;
     return;
   }
@@ -135,7 +135,7 @@ void Server::connectClient(int server_socket) {
                 0, NULL);
   changeEvents(_change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_DISABLE,
                 0, 0, NULL);
-  _clients[client_socket] = Client(_server_sockets[server_socket], getTime(), KEEPALIVETIMEOUT);
+  _clients[client_socket] = Client(client_socket, _server_sockets[server_socket], getTime(), KEEPALIVETIMEOUT);
 }
 
 void Server::sendHttpResponse(int client_fd) {
@@ -159,8 +159,7 @@ void Server::sendHttpResponse(int client_fd) {
                   NULL);
 }
 
-void Server::executeCgi(HttpResponse& res, HttpRequest& req, RouteRule& rule, int client_fd) {
-  res.initializeCgiProcess(req, rule, req.getHost(), _clients[client_fd].getPort(), client_fd);
+void  Server::setCgiSetting(HttpResponse& res){
   _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   changeEvents(_change_list, res.getCgiHandler().getWritePipetoCgi(),
@@ -194,45 +193,26 @@ void Server::recvHttpRequest(int client_fd) {
     HttpRequest& last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
-      try {
-        printReq(last_request, cli.getBuf());
+      printReq(last_request, cli.getBuf(), false);
+      try{
         idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
-        cli.addReadIdx(idx);
-        if (!last_request.getEntityArrived()) return ;
-        HttpResponse& res = cli.addRess().backRess();
-        try{
-          RouteRule rule = findRouteRule(last_request, client_fd);
-          if (rule.getIsCgi()) {
-            executeCgi(res, last_request, rule, client_fd);
-          } else if (last_request.getMethod() == HPS::kGET){
-            res.publish(last_request, rule);
-          } else if (last_request.getMethod() == HPS::kPOST && last_request.getLocation() == "/post_body"){
-            res.publish(last_request, rule);
-          } else {
-            res.publishError(405);
-          }
-        } catch (Host::NoRouteRuleException& e) { 
-          res.publishError(404);
-          std::cout << e.what() << std::endl;
-        } catch (std::runtime_error& e) { 
-          res.publishError(500);
-          std::cout << e.what() << std::endl;
-        }
-        printReq(last_request, cli.getBuf());
-        cli.eraseBuf();
-        cli.popReqs();
       } catch (HttpRequest::ChunkedException& e) {
-        std::cout << e.what() << std::endl;
-        HttpResponse& res = cli.addRess().backRess();
-        RouteRule rule = findRouteRule(last_request, client_fd);
-        if (!(rule.getAcceptedMethods() & (1 << last_request.getMethod()))){
-          res.publishError(405);
-        } else {
-          res.publishError(411);
-        }
-        cli.popReqs();
+        cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
+        changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
+        printReq(last_request, cli.getBuf(), true);
+        cli.popReqs();
+        return ;
       }
+      cli.addReadIdx(idx);
+      if (!last_request.getEntityArrived()) return ;
+      cli.addRess().backRess().publish(last_request, findRouteRule(last_request, client_fd), _clients[client_fd]);
+      if (cli.backRess().getIsCgi()){
+        setCgiSetting(cli.backRess());
+      }
+      printReq(last_request, cli.getBuf(), false);
+      cli.eraseBuf();
+      cli.popReqs();
     }
   }
 
@@ -250,53 +230,29 @@ void Server::recvHttpRequest(int client_fd) {
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
     if (hd.execute(&(data)[0], size) == size) {
-      try {
-        printReq(req, data);
+      printReq(req, data, false);
+      try{
         idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
-
-        cli.addReqs(req);
-        cli.addReadIdx(idx);
-        if (req.getEntityArrived()) {
-          HttpResponse& res = cli.addRess().backRess();
-
-          try {
-            RouteRule rule = findRouteRule(req, client_fd);
-            if (rule.getIsCgi()) {
-              executeCgi(res, req, rule, client_fd);
-            } else if (req.getMethod() == HPS::kGET){
-              res.publish(req, rule);
-            } else if (req.getMethod() == HPS::kPOST && req.getLocation() == "/post_body"){
-              res.publish(req, rule);
-            } else {
-              res.publishError(405);
-            }
-          } catch (Host::NoRouteRuleException& e) {
-            res.publishError(404);
-            std::cout << e.what() << std::endl;
-          } catch (std::runtime_error &e) { 
-            res.publishError(500);
-            std::cout << e.what() << std::endl;
-          }
-          cli.popReqs();
-        }
       } catch (HttpRequest::ChunkedException& e) {
-        std::cout << e.what() << std::endl;
-        HttpResponse& res = cli.addRess().backRess();
-        RouteRule rule = findRouteRule(req, client_fd);
-        if (!(rule.getAcceptedMethods() & (1 << req.getMethod()))){
-          res.publishError(405);
-        } else {
-          res.publishError(411);
-        }
+        cli.addRess().backRess().publishError(411, findRouteRule(req, client_fd), req.getMethod());
+        changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
-        res.publishError(405);
+        return ;
+      }
+      cli.addReqs(req);
+      cli.addReadIdx(idx);
+      if (req.getEntityArrived()) {
+        cli.addRess().backRess().publish(req, findRouteRule(req, client_fd), _clients[client_fd]);
+        if (cli.backRess().getIsCgi()){
+          setCgiSetting(cli.backRess());
+        }
+        cli.eraseBuf();
+        cli.popReqs();
       }
     } else {
-      HttpResponse& res = cli.addRess().backRess();
+      cli.addRess().backRess().publishError(400, findRouteRule(req, client_fd), req.getMethod());
       cli.setEof(true);
-      res.publishError(400);
     }
-    cli.eraseBuf();
   }
   std::cout << "response size: " << cli.getRess().size() << '\n' << std::endl;
   if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
@@ -377,10 +333,10 @@ void  Server::recvCgiResponse(int cgi_fd) {
         } catch (HttpResponse::FileNotFoundException &e){
           std::cout << "configured error page not found" << std::endl;
           std::cout << e.what() << std::endl;
-          res.publishError(404);
+          res.publishError(404, 0, res.getMethod());
         }
     } else {
-      res.publishError(404);
+      res.publishError(404,  0, res.getMethod());
     }
   
   }
@@ -455,7 +411,7 @@ void Server::run(void) {
         if (WEXITSTATUS(status) != 0) {
           std::cout << "EXIT_FAILURE:" << curr_event->ident << std::endl;
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
-          res.publishError(502);
+          res.publishError(502, 0, res.getMethod());
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
         std::cout << std::endl;
@@ -486,12 +442,12 @@ void Server::run(void) {
   }
 }
 
-RouteRule Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
+const RouteRule* Server::findRouteRule(const HttpRequest& req, const int& client_fd) {
   std::pair<std::string, int> key(req.getHost(), _clients[client_fd].getPort());
   if (_hosts.count(key))
     return (_hosts[key].getRouteRule(req.getLocation()));
   else
-    return ( _default_host.getRouteRule(req.getLocation()));
+    return (_default_host.getRouteRule(req.getLocation()));
 }
 
 time_t Server::getTime(void) {
