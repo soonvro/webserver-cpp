@@ -2,8 +2,8 @@
 
 Client::Client() : _read_idx(0), _port(-1) {}
 
-Client::Client(int port, time_t last_request_time, time_t timeout_interval) 
-  : _read_idx(0), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
+Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval) 
+  : _read_idx(0), _client_fd(client_fd), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {}
 
 Client& Client::operator=(const Client& other) {
   if (this == &other)
@@ -13,12 +13,14 @@ Client& Client::operator=(const Client& other) {
   _reqs = other._reqs;
   _ress = other._ress;
   _has_eof = other._has_eof;
+  _client_fd = other._client_fd;
   _port = other._port;
   _last_request_time = other._last_request_time;
   _timeout_interval = other._timeout_interval;
   return *this;
 }
 
+const int&                        Client::getClientFd() const { return _client_fd; }
 const int&                        Client::getPort(void) const { return _port; }
 const std::vector<char>&          Client::getBuf(void) const { return _buf; }
 const size_t&                     Client::getReadIdx(void) const { return _read_idx; }

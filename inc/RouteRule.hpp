@@ -1,5 +1,5 @@
-#ifndef ROUTERULE_H
-#define ROUTERULE_H
+#ifndef ROUTERULE_HPP_
+#define ROUTERULE_HPP_
 
 #include <map>
 #include <string>

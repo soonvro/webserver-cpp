@@ -12,7 +12,7 @@
 class CgiHandler {
   public:
     CgiHandler();
-    CgiHandler(HttpRequest& req, RouteRule& route_rule,
+    CgiHandler(const HttpRequest& req, const RouteRule& route_rule,
                const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
     CgiHandler(const CgiHandler& other);
     CgiHandler& operator=(const CgiHandler& other);

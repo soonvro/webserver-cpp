@@ -15,12 +15,13 @@ class Client {
 
     bool                              _has_eof;
 
+    int                               _client_fd;
     int                               _port;
     time_t                            _last_request_time;
     time_t                            _timeout_interval;
   public:
     Client();
-    Client(int port, time_t last_request_time, time_t timeout_interval);
+    Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval);
 
     Client& operator=(const Client& other);
 
@@ -29,9 +30,11 @@ class Client {
     const std::queue<HttpRequest>&    getReqs(void) const;
     const std::queue<HttpResponse>&   getRess(void) const;
     const bool&                       getEof(void) const;
+    const int&                        getClientFd() const;
     const int&                        getPort(void) const;
     const time_t&                     getLastRequestTime() const;
     const time_t&                     getTimeoutInterval() const;
+
     HttpResponse&                     backRess(void);
 
     HttpRequest&                      backRequest(void);

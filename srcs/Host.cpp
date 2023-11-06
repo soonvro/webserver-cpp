@@ -12,7 +12,7 @@ void                                    Host::setRouteRules(const std::map<std::
 
 void Host::addRouteRule(const std::string& route, const RouteRule& rule) { _route_rules[route] = rule; }
 
-const RouteRule& Host::getRouteRule(const std::string& route) const {
+const RouteRule* Host::getRouteRule(const std::string& route) const {
   //prefix
   std::map<std::string, RouteRule>::const_iterator it = _route_rules.begin();
   const RouteRule* rule = 0;
@@ -34,6 +34,5 @@ const RouteRule& Host::getRouteRule(const std::string& route) const {
     }
     it++;
   }
-  if (rule) return *rule;
-  throw NoRouteRuleException();
+  return rule;
 }

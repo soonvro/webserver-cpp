@@ -52,13 +52,14 @@ class Server {
   void      connectClient(int server_socket);
 
   void      sendHttpResponse(int client_fd);
-  void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
+  // void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
+  void      setCgiSetting(HttpResponse& res); 
   void      recvHttpRequest(int client_fd);
 
   void      sendCgiRequest(int cgi_fd, void* req);
   void      recvCgiResponse(int cgi_fd);
 
-  RouteRule findRouteRule(const HttpRequest& req, const int& client_fd);
+  const RouteRule* findRouteRule(const HttpRequest& req, const int& client_fd);
 
   time_t    getTime(void);  //return seconds
   void      checkTimeout(void);

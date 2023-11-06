@@ -1,8 +1,14 @@
 #include <fstream>
 #include <dirent.h>
 #include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "HttpResponse.hpp"
-#include "HttpDecoderEnums.h"
+#include "Client.hpp"
+
+HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD) {}
 
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
@@ -40,8 +46,111 @@ void                                      HttpResponse::readDir(const std::strin
 }
 
 
-HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false) {}
+bool                                      HttpResponse::isDir(const std::string& location){
+  struct stat stat_buf;
+  if (stat(location.c_str(), &stat_buf) != 0)
+    return false;
+  return S_ISDIR(stat_buf.st_mode);
+}
+
+void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule* rule, const Client& client) {
+    const std::string& location = req.getLocation();
+    _method = req.getMethod();
+    if (!rule){
+      publishError(404, 0, _method);
+      return ;
+    }
+    if (rule->getIsCgi()){
+      //cgi set
+      initializeCgiProcess(req, *rule, req.getHost(), client.getPort(), client.getClientFd());
+      _is_cgi = true;
+      return ;
+    }
+    const std::string  suffix_of_location(location.substr(rule->getRoute().size(), location.size() - rule->getRoute().size()));
+    _headers["Content-Type"] = "text/html";
+    _headers["Connection"] = "keep-alive";
+    _is_ready = true;
+    try{
+        if (!(rule->getAcceptedMethods() & (1 << _method))) {
+          publishError(405, rule, _method);
+        }
+        else if (rule->getMaxClientBodySize() != 0 &&
+                rule->getMaxClientBodySize() < req.getEntity().size()) {
+          publishError(413, rule, _method);
+        } else if (rule->getRedirection().first) {
+          _status = rule->getRedirection().first;
+          if (300 <= _status && _status < 400) {
+            _headers["Location"] = rule->getRedirection().second;
+          }
+          addContentLength();
+          return ;
+        } else if (isDir(rule->getRoot() + suffix_of_location)) {
+          if (rule->getIndexPage().size() &&
+              (rule->getRoute() == location || rule->getRoute() + '/' == location)) {  // index page event
+            _status = 200;
+            if (_method != HPS::kHEAD)
+              readFile(rule->getRoot() + "/" + rule->getIndexPage());
+          } else if (rule->getAutoIndex() &&
+                    (rule->getRoute() == location || rule->getRoute() + '/' == location)) {  // index page event
+            _status = 200;
+            if (_method != HPS::kHEAD)
+                readDir(rule->getRoot() + suffix_of_location);
+          } else{
+            publishError(404, rule, _method);
+          }
+        }else{
+          _status = 200;
+          if (_method != HPS::kHEAD)
+            readFile(rule->getRoot() + suffix_of_location);
+        }
+    } catch (FileNotFoundException &e){
+      std::cout << "requested url not found" << std::endl;
+      std::cout << e.what() << std::endl;
+      publishError(404, rule, _method);
+    }
+    addContentLength();
+}
+
+void                                      HttpResponse::publishError(int status, const RouteRule* rule, enum HPS::Method method){
+  _status = status;
+  if (!rule || !rule->hasErrorPage(status)){
+    std::stringstream ss;
+    ss << _status;
+    if (method != HPS::kHEAD) {
+      std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
+      _body.assign(body_str.begin(), body_str.end());
+    }
+    _headers["Content-Type"] = "text/html";
+    _headers["Connection"] = "keep-alive";
+    _is_ready = true;
+    addContentLength();
+    return ;
+  }
+  try{
+    if (method != HPS::kHEAD)
+      readFile(rule->getRoot() + "/" + rule->getErrorPage(status));
+  } catch (FileNotFoundException &e){
+    std::cout << "configured error page not found" << std::endl;
+    std::cout << e.what() << std::endl;
+    publishError(404, 0, method);
+  }
+}
+
+void                                      HttpResponse::initializeCgiProcess(
+  const HttpRequest& req, const RouteRule& rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error) {
+  _cgi_handler = CgiHandler(req, rule, server_name, port, client_fd);
+}
+
+int                                       HttpResponse::cgiExecute(void) throw(std::runtime_error) {
+  return _cgi_handler.execute();
+}
+
+void                                      HttpResponse::addContentLength(void) {
+  std::stringstream ss;
+  ss << _body.size();
+  _headers["Content-Length"] = ss.str();
+  _content_length = _body.size();
+}
 
 // Getters
 const unsigned short&                     HttpResponse::getHttpMajor() const { return _http_major; }
@@ -56,6 +165,7 @@ const bool&                               HttpResponse::getIsReady() const { ret
 const bool&                               HttpResponse::getIsCgi() const { return _is_cgi; }
 const int&                                HttpResponse::getCgiPipeIn(void) const { return _cgi_handler.getReadPipeFromCgi(); }
 CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
+HPS::Method                         HttpResponse::getMethod(void) const { return _method; }
 
 // Setters
 void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
@@ -68,106 +178,4 @@ void                                      HttpResponse::setIsChunked(bool is_chu
 void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
 void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
-
-void                                      HttpResponse::addContentLength(void) {
-  std::stringstream ss;
-  ss << _body.size();
-  _headers["Content-Length"] = ss.str();
-  _content_length = _body.size();
-}
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-bool                                      HttpResponse::isDir(const std::string& location){
-  struct stat stat_buf;
-  if (stat(location.c_str(), &stat_buf) != 0)
-    return false;
-  return S_ISDIR(stat_buf.st_mode);
-}
-
-void                                      HttpResponse::publish(const HttpRequest& req, const RouteRule& rule) {
-    const std::string& location = req.getLocation();
-    const std::string  suffix_of_location(location.substr(rule.getRoute().size(), location.size() - rule.getRoute().size()));
-
-    _headers["Content-Type"] = "text/html";
-    _headers["Connection"] = "keep-alive";
-    _is_ready = true;
-    try{
-    if (!(rule.getAcceptedMethods() & (1 << req.getMethod())))
-      _status = 403;
-    else if (rule.getMaxClientBodySize() != 0 &&
-        rule.getMaxClientBodySize() < req.getEntity().size())
-      _status = 413;
-    else if (rule.getRedirection().first) {
-      _status = rule.getRedirection().first;
-      if (300 <= _status && _status < 400)
-        _headers["Location"] = rule.getRedirection().second;
-      else
-        _body.assign(rule.getRedirection().second.begin(), rule.getRedirection().second.end());
-      addContentLength();
-      return ;
-    } else if (isDir(rule.getRoot() + suffix_of_location)) {
-      if (rule.getIndexPage().size() &&
-          (rule.getRoute() == location || rule.getRoute() + '/' == location)) {  // index page event
-        _status = 200;
-        if (!(req.getMethod() & HPS::kHEAD))
-            readFile(rule.getRoot() + "/" + rule.getIndexPage());
-      } else if (rule.getAutoIndex() &&
-                 (rule.getRoute() == location || rule.getRoute() + '/' == location)) {  // index page event
-        _status = 200;
-        if (!(req.getMethod() & HPS::kHEAD))
-            readDir(rule.getRoot() + suffix_of_location);
-      } else{
-        _status = 404;
-      }
-    }else{
-      _status = 200;
-      if (!(req.getMethod() & HPS::kHEAD))
-        readFile(rule.getRoot() + suffix_of_location);
-    }
-    } catch (FileNotFoundException &e){
-      std::cout << "requested url not found" << std::endl;
-      std::cout << e.what() << std::endl;
-      if (rule.hasErrorPage(_status)) {
-        try{
-            if (!(req.getMethod() & HPS::kHEAD))
-            readFile(rule.getRoot() + "/" + rule.getErrorPage(_status));
-        } catch (FileNotFoundException &e){
-          std::cout << "configured error page not found" << std::endl;
-          std::cout << e.what() << std::endl;
-          publishError(404);
-        }
-      } else{
-        publishError(404);
-      }
-    }
-    addContentLength();
-}
-
-void                                      HttpResponse::publishError(int status){
-  _status = status;
-  std::stringstream ss;
-  ss << _status;
-  std::string body_str("<html><body><h1>" + ss.str() + " error!</h1></body></html>");
-  //_body.assign(body_str.begin(), body_str.end()); HEAD 요청시 반환하지 않아야한다.
-  _headers["Content-Type"] = "text/html";
-  if (status == 400){
-    _headers["Connection"] = "close";
-  }else{
-    _headers["Connection"] = "keep-alive";
-  }
-  _is_ready = true;
-  addContentLength();
-}
-
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
-
-void HttpResponse::initializeCgiProcess(
-    HttpRequest& req, RouteRule& rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error) {
-  _cgi_handler = CgiHandler(req, rule, server_name, port, client_fd);
-}
-
-int HttpResponse::cgiExecute(void) throw(std::runtime_error) {
-  return _cgi_handler.execute();
-}

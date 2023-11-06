@@ -5,6 +5,9 @@
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
 #include "CgiHandler.hpp"
+// #include "Client.hpp" 
+class Client;
+#include "HttpDecoderEnums.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -35,6 +38,8 @@ class HttpResponse {
     bool                                      _is_cgi;
     CgiHandler                                _cgi_handler;
 
+    HPS::Method                               _method;
+
     void                                      readDir(const std::string& path);
 
   //  const static std::map<std::string, std::string> contentTypes;
@@ -57,6 +62,7 @@ class HttpResponse {
     const bool&                               getIsCgi(void) const;
     const int&                                getCgiPipeIn(void) const;
     CgiHandler&                               getCgiHandler(void);
+    HPS::Method                               getMethod(void) const;
 
 
     void                                      setHttpMajor(unsigned short http_major);
@@ -73,11 +79,11 @@ class HttpResponse {
     void                                      addContentLength(void);
     bool                                      isDir(const std::string& location);
 
-    void                                      publish(const HttpRequest& req, const RouteRule& r);
-    void                                      publishError(int status);
+    void                                      publish(const HttpRequest& req, const RouteRule*, const Client& client);
+    void                                      publishError(int status, const RouteRule*, enum HPS::Method method);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
-    void initializeCgiProcess(HttpRequest& req, RouteRule& rule,
+    void initializeCgiProcess(const HttpRequest& req, const RouteRule& rule,
                               const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
     int  cgiExecute(void) throw(std::runtime_error);
     
