@@ -207,6 +207,12 @@ bool HttpRequest::saveRquestData(
     for (; (new_end != _location.begin() && *(new_end - 1) == '/') ; new_end--);
     _location = std::string(_location.begin(), new_end);
   }
+
+  if (hd->_method == HPS::kPOST &&
+      !(hd->_flag & HPS::kFlagContentlength) &&
+      !(hd->_flag & HPS::kFlagChunked)) {
+    return false;
+  }
   return true;
 }
 
