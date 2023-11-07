@@ -12,13 +12,12 @@
 HttpRequest::HttpRequest()
   : _method(HPS::kHEAD), _http_major(0),
   _http_minor(0), _port(0), _h_field(kHeaderNo),
-  _content_length(0), _chunked_block_length(0), _chunked_inserted_size(0), _chunked_idx(0),
+  _content_length(0), _chunked_block_size(0), _chunked_block_length(0),
   _is_host_header_comein(false), _is_chunked(false),
   _is_connection_keep_alive(false), _is_connection_close(false),
-  _is_content_length(false), _has_chunked_len(false),
+  _is_content_length(false), _has_chunked_len(false), _pre_cr(false),
   _header_arrived(false), _entity_arrived(false) {
-    _entity.reserve(1048576);
-    _chunked_buf.reserve(1048576);
+  _entity.reserve(1048576);
   }
 
 HttpRequest::~HttpRequest() {}
@@ -41,17 +40,16 @@ HttpRequest& HttpRequest::operator=(const HttpRequest& other){
   _last_headers_key = other._last_headers_key;
   _headers = other._headers;
   _content_length = other._content_length;
+  _chunked_block_size = other._chunked_block_size;
   _chunked_block_length = other._chunked_block_length;
-  _chunked_inserted_size = other._chunked_inserted_size;
-  _chunked_idx = other._chunked_idx;
   _is_host_header_comein = other._is_host_header_comein;
   _is_chunked = other._is_chunked;
   _is_connection_keep_alive = other._is_connection_keep_alive;
   _is_connection_close = other._is_connection_close;
   _is_content_length = other._is_content_length;
   _has_chunked_len = other._has_chunked_len;
+  _pre_cr = other._pre_cr;
   _entity = other._entity;
-  _chunked_buf = other._chunked_buf;
   _header_arrived = other._header_arrived;
   _entity_arrived = other._entity_arrived;
   return *this;
@@ -253,67 +251,65 @@ bool HttpRequest::parseHeaderValue(
 }
 
 void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
-  size_t  j = i;
-  while (i < buf.size() && buf[i] != '\n') ++i;
+  for (; i < buf.size(); ++i) {
 
-  if ((i > 0 && j == i - 1 && buf[i - 1] == '\r') || j == i) {
-    _chunked_block_length = -1;
-    return ;
-  }
-
-  if (i < buf.size() && buf[i] == '\n') {
-    _chunked_block_length = 0;
-    for (; j < (i - (buf[i - 1] == '\r')); ++j) {
-        if ('0' <= buf[j] && buf[j] <= '9') _chunked_block_length = _chunked_block_length * 16 + buf[j] - '0';
-        else if ('A' <= buf[j] && buf[j] <= 'F') _chunked_block_length = _chunked_block_length * 16 + buf[j] - 'A' + 10;
-        else if ('a' <= buf[j] && buf[j] <= 'f') _chunked_block_length = _chunked_block_length * 16 + buf[j] - 'a' + 10;
-        else {
-          _chunked_block_length = -1;
-          break ;
-        }
+    if (buf[i] == '\n') {
+      _has_chunked_len = true;
+      _pre_cr = false;
+      _content_length += _chunked_block_size;
+      _chunked_block_length = _chunked_block_size;
+      ++i;
+      break ;
     }
-    _has_chunked_len = true;
-    ++i;
+
+    if ('0' <= buf[i] && buf[i] <= '9') _chunked_block_size = _chunked_block_size * 16 + buf[i] - '0';
+    else if ('A' <= buf[i] && buf[i] <= 'F') _chunked_block_size = _chunked_block_size * 16 + buf[i] - 'A' + 10;
+    else if ('a' <= buf[i] && buf[i] <= 'f') _chunked_block_size = _chunked_block_size * 16 + buf[i] - 'a' + 10;
+    else if (!_pre_cr && buf[i] == '\r') _pre_cr = true;
+    else throw ChunkedException();
   }
 }
 
 void  HttpRequest::chunkedSetting(const std::vector<char>& buf, size_t& idx) {
-  //copy
-  _chunked_buf.insert(_chunked_buf.end(), buf.begin(), buf.end());
-  
-  size_t chunked_start = _chunked_idx;
-  while (_chunked_idx < _chunked_buf.size()){
-    if (_has_chunked_len == false){
-      chunkedLength(_chunked_buf, _chunked_idx);
-      if (_chunked_block_length > 0) _content_length += static_cast<unsigned long long>(_chunked_block_length);
-      if (_chunked_block_length == 0) _entity_arrived = true;
-      if (_chunked_block_length < 0) 
-        throw ChunkedException();
-      idx = _chunked_idx - chunked_start;
-      if (_entity_arrived) break;
-    } else {
-      if (_chunked_buf.size() >= _chunked_idx + _chunked_block_length + 2) {
-        if (_chunked_buf[_chunked_idx + _chunked_block_length] == '\r' && _chunked_buf[_chunked_idx + _chunked_block_length + 1] == '\n') {
-          _entity.insert(_entity.end(), _chunked_buf.begin() + _chunked_idx, _chunked_buf.begin() + _chunked_idx + _chunked_block_length);
-          _chunked_idx += _chunked_block_length + 2;
-          idx += _chunked_block_length + 2 - chunked_start;
-        } else {
-          throw ChunkedException();
+  while (idx < buf.size()) {
+    if (_has_chunked_len == false) chunkedLength(buf, idx);
+    else {
+      if (_chunked_block_size == 0) break ;
+
+      if (static_cast<unsigned long>(_chunked_block_length) <= buf.size() - idx) {
+        if (_chunked_block_length == 0) {
+          if (!_pre_cr && buf[idx] == '\r') {
+            _pre_cr = true;
+            ++idx;
+          }
+          if (idx < buf.size()) {
+            if (buf[idx] == '\n') {
+              _pre_cr = false;
+              _has_chunked_len = false;
+              _chunked_block_size = 0;
+              ++idx;
+            } else throw ChunkedException();
+          }
+        } else if (_chunked_block_length) {
+          _entity.insert(_entity.end(), buf.begin() + idx, buf.begin() + idx + _chunked_block_length);
+          idx += _chunked_block_length;
+          _chunked_block_length = 0;
         }
-        _has_chunked_len = false;
       } else {
-        idx = buf.size();
-        break;
+        _entity.insert(_entity.end(), buf.begin() + idx, buf.end());
+        _chunked_block_length -= buf.size() - idx;
+        idx += buf.size() - idx;
       }
     }
   }
+  if (_has_chunked_len && _chunked_block_size == 0) _entity_arrived = true;
 }
 
 int HttpRequest::settingContent(const std::vector<char>& buf) {
   size_t i = 0;
 
   if (_is_chunked) {
-    if (buf.size()) chunkedSetting(buf, i);
+    if (i < buf.size()) chunkedSetting(buf, i);
   } else {
     std::vector<char>::const_iterator iter = buf.begin();
     std::advance(iter, i);
