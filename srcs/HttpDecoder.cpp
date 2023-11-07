@@ -14,6 +14,7 @@
    (std::memcmp((lhs), (rhs), HPS_LITERAL_STRLEN(rhs)) == 0))
 
 #define HPS_IS_VCHAR(c) ((c) >= 33 && (c) <= 126)
+#define HPS_IS_FIELD_VCHAR(c) (HPS_IS_VCHAR(c) || ((c) >= 0x80 && (c) <= 0xFF))
 #define HPS_IS_TCHAR(c) \
   (std::isalnum(c) || \
    (c) == '!'  || (c) == '#' || (c) == '$' || (c) == '%' || (c) == '&' || \
@@ -148,16 +149,16 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
           _state = HPS::kDead;
           break;
         }
-        if (isStrNCaseInsensOfLhs(p_prev, _p, CONNECTION,
-                                  HPS_LITERAL_STRLEN(CONNECTION))) {
+        if (isStrNCaseInsensOfLhs(p_prev, _p,
+              CONNECTION, HPS_LITERAL_STRLEN(CONNECTION))) {
           _state = HPS::kHeaderConnection;
         }
-        else if (isStrNCaseInsensOfLhs(p_prev, _p, CONTENT_LENGTH,
-                                  HPS_LITERAL_STRLEN(CONTENT_LENGTH))) {
+        else if (isStrNCaseInsensOfLhs(p_prev, _p,
+                   CONTENT_LENGTH, HPS_LITERAL_STRLEN(CONTENT_LENGTH))) {
           _state = HPS::kHeaderContentLength;
         }
-        else if (isStrNCaseInsensOfLhs(p_prev, _p, TRANSFER_ENCODING,
-                                  HPS_LITERAL_STRLEN(TRANSFER_ENCODING))) {
+        else if (isStrNCaseInsensOfLhs(p_prev, _p,
+                   TRANSFER_ENCODING, HPS_LITERAL_STRLEN(TRANSFER_ENCODING))) {
           _state = HPS::kHeaderTransferEncoding;
         }
         else {
@@ -180,7 +181,11 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
 
       case HPS::kHeaderValueStart:
         p_prev = _p;
-        while (_c != ',' && !HPS_IS_WHITESPACE(_c) && HPS_IS_VCHAR(_c)) this->readNBytes(1);  // read value
+        // read value
+        while (_c != ',' &&
+               (HPS_IS_WHITESPACE(_c) || HPS_IS_FIELD_VCHAR(static_cast<unsigned char>(_c)))) {
+          this->readNBytes(1);
+        }
         if (_p == p_prev) {
           _state = HPS::kDead;
           break;
