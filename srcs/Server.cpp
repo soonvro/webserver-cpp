@@ -10,7 +10,7 @@
 
 
 #define DEBUGMOD 1
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {

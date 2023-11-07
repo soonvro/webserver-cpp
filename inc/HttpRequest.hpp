@@ -93,6 +93,8 @@ class HttpRequest {
     unsigned long long                  _content_length;
 
     long long                           _chunked_block_length;
+    long long                           _chunked_inserted_size;
+    size_t                              _chunked_idx;   
 
     bool                                _is_host_header_comein;
     bool                                _is_chunked;
@@ -103,6 +105,8 @@ class HttpRequest {
 
     //entity
     std::vector<char>                   _entity;
+    std::vector<char>                   _chunked_buf;
+
 
     bool                                _header_arrived;
     bool                                _entity_arrived;
