@@ -5,6 +5,8 @@
 #include "HttpResponse.hpp"
 #include <queue>
 
+#define CLIENT_BUF_SIZE 1073741824
+
 class Client {
   private:
     std::vector<char>                 _buf;

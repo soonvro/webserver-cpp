@@ -10,7 +10,7 @@
 
 
 #define DEBUGMOD 1
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
@@ -150,11 +150,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     }
     int n = write(client_fd, &(responses.front().getBody())[idx],\
          (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
-    if (n < 0) {
-      responses.front().setEntityIdx(idx);
-      if (errno == EWOULDBLOCK || errno == EAGAIN) return ; // NON-BLOCK socket read buff 비어있을 때
-      throw std::runtime_error("Error: read error. <sendHttpResponse>");
-    }
+    if (n < 0)  throw std::runtime_error("Error: read error. <sendHttpResponse>");
     idx += n;
     responses.front().setEntityIdx(idx);
     if ((size_t)idx != responses.front().getBody().size()) return ;
@@ -182,49 +178,25 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
   char    *buf = new char[event_size];
   Client& cli = _clients[client_fd];
 
-  struct timespec a, b;
-  clock_gettime(CLOCK_REALTIME, &a);
   int n = read(client_fd, buf, event_size);
-  clock_gettime(CLOCK_REALTIME, &b);
-  std::cout << "+_+ read time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
 
-  if (n < 0) {
-    if (errno != EWOULDBLOCK && errno != EAGAIN) {
-      delete[] buf;
-      throw std::runtime_error("Error: read error. <recvHttpRequest>");
-    }
-  }
-  clock_gettime(CLOCK_REALTIME, &a);
-  if (n > 0) {
-    cli.addBuf(buf, n);
-  }
-  clock_gettime(CLOCK_REALTIME, &b);
-  std::cout << "$$$ add Buf time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
-
-  if (n == 0) cli.setEof(true);
+  if (n > 0)  cli.addBuf(buf, n);
   delete[] buf;
+  if (n < 0)  throw std::runtime_error("Error: read error. <recvHttpRequest>");
+  if (n == 0) cli.setEof(true);
   if (n == 0 && cli.getBuf().empty()){
     disconnectClient(client_fd);
     return ;
   }
 
-
-
   int idx;
-          
   if (cli.getReqs().size() > 0) {
     HttpRequest& last_request = cli.backRequest();
 
     if (!last_request.getEntityArrived()) {
-      clock_gettime(CLOCK_REALTIME, &a);
       printReq(last_request, cli.getBuf(), false);
-      clock_gettime(CLOCK_REALTIME, &b);
-      std::cout << "--- print log : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
       try{
-        clock_gettime(CLOCK_REALTIME, &a);
         idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
-        clock_gettime(CLOCK_REALTIME, &b);
-        std::cout << "@@@ setting content : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
       } catch (HttpRequest::ChunkedException& e) {
         cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -234,9 +206,6 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         return ;
       }
       cli.addReadIdx(idx);
-
-
-
       if (!last_request.getEntityArrived()) return ;
       cli.addRess().backRess().publish(last_request, findRouteRule(last_request, client_fd), _clients[client_fd]);
       if (cli.backRess().getIsCgi()){
@@ -248,8 +217,6 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     }
   }
 
-
-  clock_gettime(CLOCK_REALTIME, &a);
   while ((idx = cli.headerEndIdx(cli.getReadIdx())) >= 0) { // header 읽기 (\r\n\r\n)
     HttpRequest             req;
     HttpDecoder             hd;
@@ -288,9 +255,6 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       cli.setEof(true);
     }
   }
-  clock_gettime(CLOCK_REALTIME, &b);
-  std::cout << "@@@ if 2 : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
-
 
   std::cout << "response size: " << cli.getRess().size() << '\n' << std::endl;
   if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
@@ -303,21 +267,15 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   int n = 0;
   int idx = p_handler->getCgiReqEntityIdx();
 
-  if (DEBUGMOD && DEBUG_DETAIL_KEVENT) {
-    std::cout << "Cgi request send idx : " << idx << std::endl;
-  }
+  if (DEBUGMOD && DEBUG_DETAIL_KEVENT)  std::cout << "Cgi request send idx : " << idx << std::endl;
+  
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], \
     (int64_t)p_handler->getRequest().getEntity().size() - idx > event_size ? event_size : p_handler->getRequest().getEntity().size() - idx);
-  if (n < 0) {
-    if (errno == EWOULDBLOCK || errno == EAGAIN)
-      return ;
-    throw std::runtime_error("Error: read error. <sendCgiRequest>");
-  }
+  if (n < 0)  throw std::runtime_error("Error: read error. <sendCgiRequest>");
   idx += n;
   
-  if (DEBUGMOD && DEBUG_DETAIL_KEVENT) {
-    std::cout << "send end"  << std::endl;
-  }
+  if (DEBUGMOD && DEBUG_DETAIL_KEVENT)  std::cout << "send end"  << std::endl;
+  
 
   p_handler->setCgiReqEntityIdx(idx);
   if ((size_t)idx >= p_handler->getRequest().getEntity().size()) close(cgi_fd);
@@ -330,15 +288,11 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   CgiHandler& cgi_handler = res.getCgiHandler();
 
   int n = read(cgi_fd, buf, event_size);
-  if (n < 0) {
-    if (errno != EWOULDBLOCK && errno != EAGAIN) 
-      throw std::runtime_error("Error: read error. <recvCgiResponse>");
-  }
   if (n > 0) cgi_handler.addBuf(buf, n);
-    delete[] buf;
-  if (n != 0) {
-    return ;
-  }
+  delete[] buf;
+  if (n < 0)  throw std::runtime_error("Error: read error. <recvCgiResponse>");
+  if (n != 0)  return ;
+
   cgi_handler.closeReadPipe();
   if (n == 0 && cgi_handler.getBuf().size() == 0) return ;
   res.setIsReady(true);
@@ -348,10 +302,10 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   _cgi_responses_on_pipe.erase(cgi_fd);
 
   //cgi response 생성
-  buf = new char[2];
-  buf[0] = 0;
-  cgi_handler.addBuf(buf, 1);
-  delete[] buf;
+  // buf = new char[2];
+  // buf[0] = 0;
+  cgi_handler.addBuf("", 1);
+  // delete[] buf;
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
   CgiResponse cgi_response(cgi_response_str);
   const CgiType &cgi_type = cgi_response.getType();
@@ -467,8 +421,8 @@ void Server::run(void) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients.count(curr_event->ident)) {  // client read event
-          _clients[curr_event->ident].setLastRequestTime(getTime());
           struct timespec a, b;
+          _clients[curr_event->ident].setLastRequestTime(getTime());
           clock_gettime(CLOCK_REALTIME, &a);
           recvHttpRequest(curr_event->ident, curr_event->data);
           clock_gettime(CLOCK_REALTIME, &b);

@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#define REQUEST_BUF_SIZE 1073741824
+
 enum HttpRequestHeader {
   kHeaderNo,
   kHeaderHost,
@@ -92,9 +94,8 @@ class HttpRequest {
     std::map<std::string, std::string>  _headers;
     unsigned long long                  _content_length;
 
+    long long                           _chunked_block_size;
     long long                           _chunked_block_length;
-    long long                           _chunked_inserted_size;
-    size_t                              _chunked_idx;   
 
     bool                                _is_host_header_comein;
     bool                                _is_chunked;
@@ -102,11 +103,10 @@ class HttpRequest {
     bool                                _is_connection_close;
     bool                                _is_content_length;
     bool                                _has_chunked_len;
+    bool                                _pre_cr;
 
     //entity
     std::vector<char>                   _entity;
-    std::vector<char>                   _chunked_buf;
-
 
     bool                                _header_arrived;
     bool                                _entity_arrived;
