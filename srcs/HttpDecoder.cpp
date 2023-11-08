@@ -64,8 +64,6 @@ unsigned int HttpDecoder::execute(const char* buf, const unsigned int len) {
   _c       = *_p;
   const char* p_prev;
   while (_p != _buf + _buf_len) {
-    if (_p > _buf + _buf_len)
-      throw std::runtime_error("HttpDecoder accesses undefined memory");
     switch (_state) {
       case HPS::kMethodStart:
         if (HPS_IS_NEWLINE(_p)) {

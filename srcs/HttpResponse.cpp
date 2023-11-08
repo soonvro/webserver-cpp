@@ -8,9 +8,48 @@
 #include "Client.hpp"
 
 HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD), _entity_idx(0) {}
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD), _entity_idx(0) {
+    this->initContentTypes();
+  }
 
 #define BUF_SIZE 4096
+
+void HttpResponse::initContentTypes(void) {
+  // const std::map<std::string, std::string> HttpResponse::contentTypes = {
+//                                                               {".html", "text/html"},
+//                                                               {".css", "text/css"},
+//                                                               {".js", "application/javascript"},
+//                                                               {".png", "image/png"},
+//                                                               {".jpg", "image/jpeg"},
+//                                                               {".jpeg", "image/jpeg"},
+//                                                               {".gif", "image/gif"},
+//                                                               {".json", "application/json"},
+//                                                               {".pdf", "application/pdf"},
+//                                                               {".zip", "application/zip"},
+//                                                               {".tar", "application/x-tar"},
+//                                                               {".gz", "application/gzip"},
+//                                                               {".mp4", "video/mp4"},
+//                                                               {".mp3", "audio/mpeg"},
+//                                                               {".avi", "video/x-msvideo"},
+//                                                               {".mpeg", "video/mpeg"},
+//                                                               {".wav", "audio/x-wav"},
+//                                                               {".ogg", "audio/ogg"},
+//                                                               {".xml", "text/xml"},
+//                                                               {".txt", "text/plain"},
+  const char* extensions[] = {
+    ".html", ".css", ".js", ".png", ".jpg",
+    ".jpeg", ".gif", ".json", ".pdf", ".zip",
+    ".tar", ".gz", ".mp4", ".mp3", ".avi",
+    ".mpeg", ".wav", ".ogg", ".xml", ".txt"};
+  const char* content_types[] = {
+    "text/html", "text/css", "application/javascript", "image/png", "image/jpeg",
+    "image/jpeg", "image/gif", "application/json", "application/pdf", "application/zip",
+    "application/x-tar", "application/gzip", "video/mp4", "audio/mpeg", "video/x-msvideo",
+    "video/mpeg", "audio/x-wav", "audio/ogg", "text/xml", "text/plain"};
+  for (unsigned int i = 0; i < (sizeof(extensions)/sizeof(extensions[0])); i++) {
+    _contentTypes[extensions[i]] = content_types[i];
+  }
+}
 
 void                                      HttpResponse::readFile(const std::string& path){
   std::ifstream i(path);
@@ -28,9 +67,7 @@ void                                      HttpResponse::readFile(const std::stri
       throw FileNotFoundException();
     }
   }
-  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  // _headers["Content-Type"]에 path의 확장자에 따라서 적절한 값을 넣어줘야함.
-  _headers["Content-Type"] = "text/html";
+  _headers["Content-Type"] = (path.rfind('.') != std::string::npos ? _contentTypes[path.substr(path.rfind('.'))] : "text/html");
 }
 
 void                                      HttpResponse::readDir(const std::string& path){
