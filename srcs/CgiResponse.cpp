@@ -13,9 +13,8 @@ CgiResponse::CgiResponse(std::string& s){
     if (line == "\r" || line == "")
       break;
     ss_one_line.str(line);
-    ss_one_line >> key >> value;
-    key.erase(key.size() - 1);
-    value.erase(value.size() - 1);
+    std::getline(ss_one_line, key, ':');
+    ss_one_line >> value;
     _headers[key] = value;
     if (ss.eof())
       break ;

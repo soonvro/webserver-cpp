@@ -120,8 +120,10 @@ void Server::connectClient(int server_socket) {
   sockaddr_in client_address;
   socklen_t client_len = sizeof(client_address);
 
-  if ((client_socket = accept(server_socket, (struct sockaddr*)&client_address, &client_len)) == -1)
-    throw std::runtime_error("Error: accept fail");
+  if ((client_socket = accept(server_socket, (struct sockaddr*)&client_address, &client_len)) == -1){
+    std::cout << "accept error" << std::endl;
+    return ;
+  }
   fcntl(client_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
   char client_ip[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
@@ -151,7 +153,10 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     }
     int n = write(client_fd, &(responses.front().getBody())[idx],\
          (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
-    if (n < 0)  throw std::runtime_error("Error: read error. <sendHttpResponse>");
+    if (n < 0)  {
+      disconnectClient(client_fd);
+      return ;
+    }
     idx += n;
     responses.front().setEntityIdx(idx);
     if ((size_t)idx != responses.front().getBody().size()) return ;
@@ -183,9 +188,8 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
 
   if (n > 0)  cli.addBuf(buf, n);
   delete[] buf;
-  if (n < 0)  throw std::runtime_error("Error: read error. <recvHttpRequest>");
   if (n == 0) cli.setEof(true);
-  if (n == 0 && cli.getBuf().empty()){
+  if ((n == 0 && cli.getBuf().empty()) || n < 0){
     disconnectClient(client_fd);
     return ;
   }
@@ -272,7 +276,10 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], \
     (int64_t)p_handler->getRequest().getEntity().size() - idx > event_size ? event_size : p_handler->getRequest().getEntity().size() - idx);
-  if (n < 0)  throw std::runtime_error("Error: read error. <sendCgiRequest>");
+  if (n < 0) {
+    disconnectClient(p_handler->getClientFd());
+    return ;
+  }
   idx += n;
   
   if (DEBUGMOD && DEBUG_DETAIL_KEVENT)  std::cout << "send end"  << std::endl;
@@ -291,7 +298,10 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   int n = read(cgi_fd, buf, event_size);
   if (n > 0) cgi_handler.addBuf(buf, n);
   delete[] buf;
-  if (n < 0)  throw std::runtime_error("Error: read error. <recvCgiResponse>");
+  if (n < 0)  {
+    disconnectClient(cgi_handler.getClientFd());
+    return ;
+  }
   if (n != 0)  return ;
 
   cgi_handler.closeReadPipe();
@@ -302,11 +312,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
   _cgi_responses_on_pipe.erase(cgi_fd);
 
-  //cgi response 생성
-  // buf = new char[2];
-  // buf[0] = 0;
   cgi_handler.addBuf("", 1);
-  // delete[] buf;
   std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
   CgiResponse cgi_response(cgi_response_str);
   const CgiType &cgi_type = cgi_response.getType();
@@ -407,9 +413,8 @@ void Server::run(void) {
         waitpid(curr_event->ident, &status, WNOHANG);
         std::cout << "waitpid :" << curr_event->ident << " status: " << WEXITSTATUS(status) << std::endl;
         if (WEXITSTATUS(status) != 0) {
-          std::cout << "EXIT_FAILURE:" << curr_event->ident << std::endl;
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
-          res.publishError(502, 0, res.getMethod());
+          res.publishError(503, 0, res.getMethod());
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
       // socket disconnect event
@@ -424,7 +429,15 @@ void Server::run(void) {
           struct timespec a, b;
           _clients[curr_event->ident].setLastRequestTime(getTime());
           clock_gettime(CLOCK_REALTIME, &a);
-          recvHttpRequest(curr_event->ident, curr_event->data);
+          try{
+            recvHttpRequest(curr_event->ident, curr_event->data);
+          } catch (std::exception& e) {
+            std::cout << e.what() << std::endl;
+            _clients[curr_event->ident].setEof(true);;          
+            HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
+            res.publishError(502, 0, res.getMethod());
+            changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+          }
           clock_gettime(CLOCK_REALTIME, &b);
          std::cout << "recvHttpRequest time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event

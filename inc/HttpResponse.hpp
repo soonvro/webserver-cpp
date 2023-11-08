@@ -39,6 +39,8 @@ class HttpResponse {
     HPS::Method                               _method;
     int                                       _entity_idx;
 
+    std::map<std::string, std::string>        _contentTypes;
+
     void                                      readDir(const std::string& path);
 
   //  const static std::map<std::string, std::string> contentTypes;
@@ -46,7 +48,7 @@ class HttpResponse {
   public:
     HttpResponse();
 
-
+    void                                      initContentTypes(void);
     const unsigned short&                     getHttpMajor(void) const;
     const unsigned short&                     getHttpMinor(void) const;
 
@@ -95,15 +97,6 @@ class HttpResponse {
     };
 };
 
-// const std::map<std::string, std::string> HttpResponse::contentTypes = {
-//                                                               {".html", "text/html"},
-//                                                               {".css", "text/css"},
-//                                                               {".js", "application/javascript"},
-//                                                               {".png", "image/png"},
-//                                                               {".jpg", "image/jpeg"},
-//                                                               {".jpeg", "image/jpeg"},
-//                                                               {".gif", "image/gif"},
-//                                                               {".json", "application/json"},
-//                                                           };
+
 
 #endif
