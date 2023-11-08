@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <cstring>
 #include "HttpResponse.hpp"
 #include "Client.hpp"
 
@@ -13,7 +14,7 @@ HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
 #define BUF_SIZE 4096
 
 void                                      HttpResponse::readFile(const std::string& path){
-  std::ifstream i(path);
+  std::ifstream i(path.c_str());
   if (i.fail()){
       throw FileNotFoundException();
   }
@@ -36,12 +37,12 @@ void                                      HttpResponse::readFile(const std::stri
 void                                      HttpResponse::readDir(const std::string& path){
   DIR* dir = opendir((path).c_str());
   struct dirent* entry;
-  if (dir == nullptr){
+  if (dir == NULL){
     throw FileNotFoundException();
   }
   std::string br = "<br />";
-  while ((entry = readdir(dir)) != nullptr) {
-    _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
+  while ((entry = readdir(dir)) != NULL) {
+    _body.insert(_body.end(), entry->d_name, entry->d_name + std::strlen(entry->d_name));
     _body.insert(_body.end(), br.begin(), br.end());
 
   }

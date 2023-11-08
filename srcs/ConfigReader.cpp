@@ -81,16 +81,16 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
       case kLocationCgiPath:
       case kLocationPath:
         if (word == "root") {
-          if (config >> word && word.back() == ';' && r.getLocation() == "") {
-            word.pop_back();
+          if (config >> word && word[word.size() - 1] == ';' && r.getLocation() == "") {
+            word.erase(word.size() - 1);
             r.setLocation(word);
           } else {
             _state = kDead;
             return;
           }
         } else if (word == "index") {
-          if (config >> word && word.back() == ';' && r.getIndexPage() == "") {
-            word.pop_back();
+          if (config >> word && word[word.size() - 1] == ';' && r.getIndexPage() == "") {
+            word.erase(word.size() - 1);
             r.setIndexPage(word);
           } else {
             _state = kDead;
@@ -108,9 +108,9 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
         } else if (word == "return") {
           int code;
-          if (config >> code >> word && word.back() == ';' &&
+          if (config >> code >> word && word[word.size() - 1] == ';' &&
               !r.hasRedirection(code)) {
-            word.pop_back();
+            word.erase(word.size() - 1);
             r.addRedirection(code, word);
           } else {
             _state = kDead;
@@ -118,9 +118,9 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
           }
         } else if (word == "error_page") {
           int code;
-          if (config >> code >> word && word.back() == ';' &&
+          if (config >> code >> word && word[word.size() - 1] == ';' &&
               !r.hasErrorPage(code) && code >= 300 && code < 600) {
-            word.pop_back();
+            word.erase(word.size() - 1);
             r.addErrorPage(code, word);
           } else {
             _state = kDead;
@@ -136,8 +136,8 @@ void ConfigReader::handleLocationBlock(std::string word, std::ifstream& config,
             return;
           }
         } else if (word == "cgi_root") {
-          if (config >> word && word.back() == ';' && r.getCgiPath() == "") {
-            word.pop_back(); 
+          if (config >> word && word[word.size() - 1] == ';' && r.getCgiPath() == "") {
+            word.erase(word.size() - 1);
             r.setCgiPath(word);
           } else {
             _state = kDead;
@@ -214,12 +214,12 @@ void ConfigReader::onServerBlockIn(std::string word, std::ifstream& config) {
       }
       h.setPort(port);
     } else if (word == "server_name") {
-      if (!(config >> word) || word.back() != ';' || config.fail() ||
+      if (!(config >> word) || word[word.size() - 1] != ';' || config.fail() ||
           h.getName() != "") {
         _state = kDead;
         return;
       }
-      word.pop_back();
+      word.erase(word.size() - 1);
       h.setName(word);
     } else if (word == "location") {
       handleLocationBlock(word, config, h);
@@ -262,7 +262,7 @@ void ConfigReader::onServerBlockEnd(std::string word, std::ifstream& config) {
 }
 
 void ConfigReader::readFile() {
-  std::ifstream i(filename);
+  std::ifstream i(filename.c_str());
   if (i.fail()) throw std::invalid_argument("cannot read file");
   std::string word;
   _state = kMainStart;

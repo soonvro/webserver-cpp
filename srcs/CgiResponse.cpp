@@ -14,8 +14,8 @@ CgiResponse::CgiResponse(std::string& s){
       break;
     ss_one_line.str(line);
     ss_one_line >> key >> value;
-    key.pop_back();
-    value.pop_back();
+    key.erase(key.size() - 1);
+    value.erase(value.size() - 1);
     _headers[key] = value;
     if (ss.eof())
       break ;
