@@ -1,12 +1,12 @@
 #include "Client.hpp"
 
 Client::Client() : _read_idx(0), _has_eof(false), _client_fd(-1), _port(-1) {
-  _buf.reserve(1048576);
+  _buf.reserve(ClIENT_BUF_SIZE);
 }
 
 Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval) 
   : _read_idx(0), _has_eof(false), _client_fd(client_fd), _port(port), _last_request_time(last_request_time), _timeout_interval(timeout_interval) {
-  _buf.reserve(1048576);
+  _buf.reserve(CLIENT_BUF_SIZE);
 }
 
 Client& Client::operator=(const Client& other) {

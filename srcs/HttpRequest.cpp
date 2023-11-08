@@ -17,7 +17,7 @@ HttpRequest::HttpRequest()
   _is_connection_keep_alive(false), _is_connection_close(false),
   _is_content_length(false), _has_chunked_len(false), _pre_cr(false),
   _header_arrived(false), _entity_arrived(false) {
-  _entity.reserve(1048576);
+  _entity.reserve(REQUEST_BUF_SIZE);
   }
 
 HttpRequest::~HttpRequest() {}

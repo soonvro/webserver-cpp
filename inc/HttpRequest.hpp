@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#defien REQUEST_BUF_SIZE 1073741824
+
 enum HttpRequestHeader {
   kHeaderNo,
   kHeaderHost,

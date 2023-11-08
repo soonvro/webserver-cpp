@@ -196,7 +196,10 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     if (!last_request.getEntityArrived()) {
       printReq(last_request, cli.getBuf(), false);
       try{
-        idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        // idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        std::vector<char> data;
+        data.insert(data.end(), cli.getBuf().begin() + cli.getReadIdx(), cli.getBuf().begin() + cli.getReadIdx() + size);
+        idx = last_request.settingContent(data);
       } catch (HttpRequest::ChunkedException& e) {
         cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -221,7 +224,9 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     HttpRequest             req;
     HttpDecoder             hd;
     size_t                  size = static_cast<size_t>(idx);
-    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
+//    const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
+    std::vector<char> data;
+    data.insert(data.end(), cli.getBuf().begin() + cli.getReadIdx(), cli.getBuf().begin() + cli.getReadIdx() + size);
     cli.addReadIdx(size);
     hd.setCallback(
         NULL, HttpRequest::sParseUrl,
@@ -233,7 +238,8 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     if (hd.execute(&(data)[0], size) == size) {
       printReq(req, data, false);
       try{
-        idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        idx = req.settingContent(data);
+        // idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
       } catch (HttpRequest::ChunkedException& e) {
         cli.addRess().backRess().publishError(411, findRouteRule(req, client_fd), req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
