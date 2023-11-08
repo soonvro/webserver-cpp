@@ -6,7 +6,6 @@
   $query = new CGI;
 
   $filename = $query->param("filename");
-  $email_address = $query->param("email_address");
   $filename =~ s/.*[\/\\](.*)/$1/;
   $upload_filehandle = $query->upload("filename");
 
@@ -30,8 +29,6 @@
   <BODY>
 
   <P>Thanks for uploading your photo!</P>
-  <P>Your email address: $email_address</P>
-  <P>Your photo:</P>
   <img src="/upload/$filename" border="0">
 
   </BODY>
