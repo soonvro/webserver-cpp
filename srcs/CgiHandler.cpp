@@ -107,10 +107,13 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
       close(_pipe_to_cgi_fd[PIPE_WRITE]);
       dup2(_pipe_to_cgi_fd[PIPE_READ], STDIN_FILENO);
       close(_pipe_to_cgi_fd[PIPE_READ]);
+
       this->setupCgiEnvp();
-      char* argv[2] = {NULL,};
+      char* path        = strdup(_route_rule.getCgiPath().c_str());
+      char* script_name = strdup((_route_rule.getRoot() + _req.getLocation()).c_str());
+      char* argv[3] = {path, script_name, NULL};
       extern char** environ;
-      if (execve(_route_rule.getCgiPath().c_str(), argv, environ) == -1) {
+      if (execve(path, argv, environ) == -1) {
         exit(EXIT_FAILURE);
       }
       return 0;  //  This part is actually not reached.
