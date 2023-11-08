@@ -27,37 +27,40 @@ class Client {
 
     Client& operator=(const Client& other);
 
-    const std::vector<char>&          getBuf(void) const;
-    const size_t&                     getReadIdx(void) const;
-    const std::queue<HttpRequest>&    getReqs(void) const;
-    std::queue<HttpResponse>&   getRess(void);
-    const bool&                       getEof(void) const;
-    const int&                        getClientFd() const;
-    const int&                        getPort(void) const;
-    const time_t&                     getLastRequestTime() const;
-    const time_t&                     getTimeoutInterval() const;
+    const std::vector<char>&            getBuf(void) const;
+    const size_t&                       getReadIdx(void) const;
+    const std::queue<HttpRequest>&      getReqs(void) const;
+    std::queue<HttpResponse>&           getRess(void);
+    const bool&                         getEof(void) const;
+    const int&                          getClientFd() const;
+    const int&                          getPort(void) const;
+    const time_t&                       getLastRequestTime() const;
+    const time_t&                       getTimeoutInterval() const;
 
-    HttpResponse&                     backRess(void);
+    std::vector<char>::const_iterator getReadIter(void);
+    std::vector<char>::const_iterator getEndIter(void);
 
-    HttpRequest&                      backRequest(void);
+    HttpResponse&                       backRess(void);
 
-    void                              clearBuf(void);
+    HttpRequest&                        backRequest(void);
 
-    void                              addBuf(const char* buf, size_t size);
-    void                              addReadIdx(size_t idx);
-    void                              addReqs(HttpRequest& req);
-    Client&                           addRess(void);
+    void                                clearBuf(void);
 
-    void                              eraseBuf(void);
-    void                              popReqs(void);
-    void                              popRess(void);
-    void                              setEof(bool has_eof);
+    void                                addBuf(const char* buf, size_t size);
+    void                                addReadIdx(size_t idx);
+    void                                addReqs(HttpRequest& req);
+    Client&                             addRess(void);
 
-    int                               headerEndIdx(const size_t& start);
-    const std::vector<char>           subBuf(const size_t start, const size_t end);
+    void                                eraseBuf(void);
+    void                                popReqs(void);
+    void                                popRess(void);
+    void                                setEof(bool has_eof);
 
-    void                              setLastRequestTime(const time_t& last_request_time);
-    void                              setTimeoutInterval(const time_t& timeout_interval);
+    int                                 headerEndIdx(const size_t& start);
+    const std::vector<char>             subBuf(const size_t start, const size_t end);
+
+    void                                setLastRequestTime(const time_t& last_request_time);
+    void                                setTimeoutInterval(const time_t& timeout_interval);
 };
 
 #endif

@@ -196,7 +196,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     if (!last_request.getEntityArrived()) {
       printReq(last_request, cli.getBuf(), false);
       try{
-        idx = last_request.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        idx = last_request.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -233,7 +233,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     if (hd.execute(&(data)[0], size) == size) {
       printReq(req, data, false);
       try{
-        idx = req.settingContent(cli.subBuf(cli.getReadIdx(), cli.getBuf().size()));
+        idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         cli.addRess().backRess().publishError(411, findRouteRule(req, client_fd), req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
@@ -411,7 +411,6 @@ void Server::run(void) {
           res.publishError(502, 0, res.getMethod());
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
-        std::cout << std::endl;
       // socket disconnect event
       } else if ((curr_event->flags & EV_EOF) && _clients.count(curr_event->ident)) {
         disconnectClient(curr_event->ident);

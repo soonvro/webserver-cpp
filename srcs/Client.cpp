@@ -24,38 +24,41 @@ Client& Client::operator=(const Client& other) {
   return *this;
 }
 
-const int&                        Client::getClientFd() const { return _client_fd; }
-const int&                        Client::getPort(void) const { return _port; }
-const std::vector<char>&          Client::getBuf(void) const { return _buf; }
-const size_t&                     Client::getReadIdx(void) const { return _read_idx; }
-const std::queue<HttpRequest>&    Client::getReqs(void) const { return _reqs; }
-std::queue<HttpResponse>&   Client::getRess(void) { return _ress; }
-const bool&                       Client::getEof(void) const { return _has_eof; }
-const time_t&                     Client::getLastRequestTime() const { return _last_request_time; }
-const time_t&                     Client::getTimeoutInterval() const { return _timeout_interval; }
-HttpResponse&                     Client::backRess(void) { return _ress.back(); }
+const int&                          Client::getClientFd() const { return _client_fd; }
+const int&                          Client::getPort(void) const { return _port; }
+const std::vector<char>&            Client::getBuf(void) const { return _buf; }
+const size_t&                       Client::getReadIdx(void) const { return _read_idx; }
+const std::queue<HttpRequest>&      Client::getReqs(void) const { return _reqs; }
+std::queue<HttpResponse>&           Client::getRess(void) { return _ress; }
+const bool&                         Client::getEof(void) const { return _has_eof; }
+const time_t&                       Client::getLastRequestTime() const { return _last_request_time; }
+const time_t&                       Client::getTimeoutInterval() const { return _timeout_interval; }
 
-HttpRequest&                      Client::backRequest(void) {
+std::vector<char>::const_iterator Client::getReadIter(void) { return _buf.begin() + _read_idx; }
+std::vector<char>::const_iterator Client::getEndIter(void) { return _buf.end(); }
+HttpResponse&                       Client::backRess(void) { return _ress.back(); }
+
+HttpRequest&                        Client::backRequest(void) {
   return _reqs.back();
 }
 
-void                              Client::clearBuf(void) {
+void                                Client::clearBuf(void) {
   _buf.clear();
   _read_idx = 0;
 }
 
-void                              Client::addBuf(const char* buf, size_t size) {
+void                                Client::addBuf(const char* buf, size_t size) {
   _buf.insert(_buf.end(), buf, buf + size);
 }
-void                              Client::addReadIdx(size_t idx) { _read_idx += idx; }
-void                              Client::addReqs(HttpRequest& req) { _reqs.push(req); }
-Client&                           Client::addRess(void) { _ress.push(HttpResponse()); return *this; }
-void                              Client::eraseBuf(void) { _buf.erase(_buf.begin(), _buf.begin() + _read_idx); _read_idx = 0; }
-void                              Client::popReqs(void) { _reqs.pop(); }
-void                              Client::popRess(void) { _ress.pop(); }
-void                              Client::setEof(bool has_eof) { _has_eof = has_eof; }
+void                                Client::addReadIdx(size_t idx) { _read_idx += idx; }
+void                                Client::addReqs(HttpRequest& req) { _reqs.push(req); }
+Client&                             Client::addRess(void) { _ress.push(HttpResponse()); return *this; }
+void                                Client::eraseBuf(void) { _buf.erase(_buf.begin(), _buf.begin() + _read_idx); _read_idx = 0; }
+void                                Client::popReqs(void) { _reqs.pop(); }
+void                                Client::popRess(void) { _ress.pop(); }
+void                                Client::setEof(bool has_eof) { _has_eof = has_eof; }
 
-int                               Client::headerEndIdx(const size_t& start) {
+int                                 Client::headerEndIdx(const size_t& start) {
   size_t idx = start;
 
   if (_buf.size() < 2) return -1;

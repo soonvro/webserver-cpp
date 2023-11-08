@@ -256,70 +256,72 @@ bool HttpRequest::parseHeaderValue(
   return false;
 }
 
-void  HttpRequest::chunkedLength(const std::vector<char>& buf, size_t& i) {
-  for (; i < buf.size(); ++i) {
+void  HttpRequest::chunkedLength(std::vector<char>::const_iterator& start, std::vector<char>::const_iterator& end) {
+  for (; start != end; ++start) {
 
-    if (buf[i] == '\n') {
+    if (*start == '\n') {
       _has_chunked_len = true;
       _pre_cr = false;
       _content_length += _chunked_block_size;
       _chunked_block_length = _chunked_block_size;
-      ++i;
+      ++start;
       break ;
     }
 
-    if ('0' <= buf[i] && buf[i] <= '9') _chunked_block_size = _chunked_block_size * 16 + buf[i] - '0';
-    else if ('A' <= buf[i] && buf[i] <= 'F') _chunked_block_size = _chunked_block_size * 16 + buf[i] - 'A' + 10;
-    else if ('a' <= buf[i] && buf[i] <= 'f') _chunked_block_size = _chunked_block_size * 16 + buf[i] - 'a' + 10;
-    else if (!_pre_cr && buf[i] == '\r') _pre_cr = true;
+    if ('0' <= *start && *start <= '9') _chunked_block_size = _chunked_block_size * 16 + *start - '0';
+    else if ('A' <= *start && *start <= 'F') _chunked_block_size = _chunked_block_size * 16 + *start - 'A' + 10;
+    else if ('a' <= *start && *start <= 'f') _chunked_block_size = _chunked_block_size * 16 + *start - 'a' + 10;
+    else if (!_pre_cr && *start == '\r') _pre_cr = true;
     else throw ChunkedException();
   }
 }
 
-void  HttpRequest::chunkedSetting(const std::vector<char>& buf, size_t& idx) {
-  while (idx < buf.size()) {
-    if (_has_chunked_len == false) chunkedLength(buf, idx);
+void  HttpRequest::chunkedSetting(std::vector<char>::const_iterator& start, std::vector<char>::const_iterator& end) {
+  while (0 < std::distance(start, end)) {
+    if (_has_chunked_len == false) chunkedLength(start, end);
     else {
       if (_chunked_block_size == 0) break ;
 
-      if (static_cast<unsigned long>(_chunked_block_length) <= buf.size() - idx) {
+      if (_chunked_block_length <= std::distance(start, end)) {
         if (_chunked_block_length == 0) {
-          if (!_pre_cr && buf[idx] == '\r') {
+          if (!_pre_cr && *start == '\r') {
             _pre_cr = true;
-            ++idx;
+            ++start;
           }
-          if (idx < buf.size()) {
-            if (buf[idx] == '\n') {
+          if (std::distance(start, end)) {
+            if (*start == '\n') {
               _pre_cr = false;
               _has_chunked_len = false;
               _chunked_block_size = 0;
-              ++idx;
+              ++start;
             } else throw ChunkedException();
           }
         } else if (_chunked_block_length) {
-          _entity.insert(_entity.end(), buf.begin() + idx, buf.begin() + idx + _chunked_block_length);
-          idx += _chunked_block_length;
+          _entity.insert(_entity.end(), start, start + _chunked_block_length);
+          start += _chunked_block_length;
           _chunked_block_length = 0;
         }
       } else {
-        _entity.insert(_entity.end(), buf.begin() + idx, buf.end());
-        _chunked_block_length -= buf.size() - idx;
-        idx += buf.size() - idx;
+        size_t  size = std::distance(start, end);
+        _entity.insert(_entity.end(), start, end);
+        _chunked_block_length -= size;
+        start += size;
       }
     }
   }
   if (_has_chunked_len && _chunked_block_size == 0) _entity_arrived = true;
 }
 
-int HttpRequest::settingContent(const std::vector<char>& buf) {
-  size_t i = 0;
+int HttpRequest::settingContent(std::vector<char>::const_iterator start, std::vector<char>::const_iterator end) {
+  int                               i = 0;
+  std::vector<char>::const_iterator it = start;
 
   if (_is_chunked) {
-    if (i < buf.size()) chunkedSetting(buf, i);
+    if (std::distance(start, end)) chunkedSetting(start, end);
+    i = std::distance(it, start);
   } else {
-    std::vector<char>::const_iterator iter = buf.begin();
-    std::advance(iter, i);
-    _entity.insert(_entity.end(), iter, iter + _content_length - _entity.size());
+    if (_content_length && std::distance(start, end)) _entity.insert(_entity.end(), start, end);
+    i = std::distance(start, end);
     if (_entity.size() == _content_length)
       _entity_arrived = true;
   }

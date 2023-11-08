@@ -37,7 +37,7 @@ class HttpRequest {
     const bool&                               getEntityArrived(void) const;
     const std::string                         getHeaderValue(std::string h_field) const;
 
-    int                                       settingContent(const std::vector<char>& buf);
+    int                                       settingContent(std::vector<char>::const_iterator start, std::vector<char>::const_iterator end);
 
     static bool sParseUrl(
         HttpDecoder* hd, const char *at, unsigned int len) {
@@ -75,8 +75,8 @@ class HttpRequest {
     bool                                parseHeaderValue(HttpDecoder* hd, const char *at, unsigned int len);
     bool                                saveRquestData(HttpDecoder* hd);
 
-    void                                chunkedLength(const std::vector<char>& buf, size_t& i);
-    void                                chunkedSetting(const std::vector<char>& buf, size_t& i);
+    void                                chunkedLength(std::vector<char>::const_iterator& start, std::vector<char>::const_iterator& end);
+    void                                chunkedSetting(std::vector<char>::const_iterator& start, std::vector<char>::const_iterator& end);
 
     //start line
     enum HPS::Method                    _method;
