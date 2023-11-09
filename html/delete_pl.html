@@ -5,16 +5,22 @@
 <style>
   html { color-scheme: light dark; }
   body { width: 35em; margin: 0 auto;
-  font-family: Tahoma, Verdana, Arial, sans-serif; }
+  font-family: Tahoma, Verdana, Arial, sans-serif;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center; }
+  form { border: 2px solid lightgray; border-radius: 10px; padding: 20px; }
+  a {margin-top: 15px;text-decoration: none;
+  color: black;padding: 10px 15px;border-radius: 5px;
+  align-self: flex-start;font-weight: 600;}
+  a:hover {color: skyblue;}
 </style>
 </head>
 <body>
+  <a href="/index.html">< Back to Home</a>
   <h1>This is Perl file uploading service</h1>
   <form enctype="multipart/form-data" action="delete.pl" method="post">
     <p>delete file</p>
-    <input type="text" name="filename" size="50" />
-    <br />
-    <br />
-    <input type="submit" value="Upload" />
+    <input type="text" name="filename" placeholder="File Name" />
+    <input type="submit" value="Delete" />
   </form>
 </html>

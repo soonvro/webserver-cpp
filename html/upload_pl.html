@@ -10,15 +10,20 @@
   justify-content: center; align-items: center; }
   form { border: 2px solid lightgray; border-radius: 10px; padding: 20px; }
   p { font-weight: 600; }
+  a {margin-top: 15px;text-decoration: none;
+  color: black;padding: 10px 15px;border-radius: 5px;
+  align-self: flex-start;font-weight: 600;}
+  a:hover {color: skyblue;}
 </style>
 </head>
 <body>
+  <a href="/index.html">< Back to Home</a>
   <h1>This is Perl file uploading service</h1>
   <form enctype="multipart/form-data" action="upload.pl" method="post">
     <p>Upload your file</p>
-    <input type="file" name="filename" size="50" />
-    <br />
-    <br />
-    <input type="submit" value="Upload" />
+    <div>
+      <input type="file" name="filename" />
+      <input type="submit" value="Upload" />
+    </div>
   </form>
 </html>

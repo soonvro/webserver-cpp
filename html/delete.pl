@@ -1,27 +1,69 @@
 #!/usr/bin/perl 
 use CGI;
+use Cwd;
+
+$current_dir = cwd;
+$upload_dir = "$current_dir/upload_files";
 
 $query = new CGI;
 
 $filename = $query->param("filename");
-$upload_dir = "/Users/inskim/inskim/5circle/Webserv/upload_files";
+$filename =~ s/.*[\/\\](.*)/$1/;
 
+if ( -e "$upload_dir/$filename" )
+{
 unlink "$upload_dir/$filename";
 
-print "Content-type:text/html\r\n\r\n";
-print "<html>";
-print "<head>";
-print "<title>File Delete Service Using Perl</title>";
-print "</head>";
-print "<body>";
-if (-e "$upload_dir/$filename"){
-print "file still present means unlink fails '$upload_dir/$filename' $!<br/>";
-}else{
-print  "file Removed successfully by unlink '$upload_dir/$filename' $!<br/>";
-  print "\n";
+print $query->header ( );
+print <<END_HTML;
+
+<HTML>
+<HEAD>
+<TITLE>Deleted File : $filename</TITLE>
+<style>a { margin-top: 15px;text-decoration: none;
+color: white;border: 1px solid #276150;
+background-color: #397a86;padding: 10px 15px; border-radius: 5px;}
+</style>
+</HEAD>
+
+<BODY style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
+<h1>Deleted File : <span style="color: cornflowerblue;">$filename</span></h1>
+<P>I deleted the file!</P>
+</div>
+
+<a href="/index.html">Back to Home</a>
+</BODY>
+</HTML>
+
+END_HTML
 }
-print "<br/><br/>";
-print "<a href=\"http://127.0.0.1/index.html\">Index Page</a>.<br/>";
-print "</body>";
-print "</html>";
-1;
+else
+{
+if ( !$filename )
+{
+  $filename = "(NULL)";
+}
+print $query->header ( );
+print <<END_HTML;
+
+<HTML>
+<HEAD>
+<TITLE>File Not Found!</TITLE>
+<style>
+a {margin-top: 15px;text-decoration: none;
+color: black;padding: 10px 15px;border-radius: 5px;
+align-self: flex-start;font-weight: 600;}
+a:hover {color: skyblue;}
+</style>
+</HEAD>
+
+<BODY style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
+<a href="/index.html">< Back to Home</a>
+<h1><span style="color: cornflowerblue;">does not exist \"$filename\"</span></h1>
+<P>$filname does not exist..</P>
+</div>
+</BODY>
+</HTML>
+
+END_HTML
+}
