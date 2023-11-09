@@ -10,7 +10,7 @@
 #include "CgiResponse.hpp"
 
 
-#define DEBUGMOD 1
+#define DEBUGMOD 0
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
@@ -268,6 +268,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
 
 void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   CgiHandler* p_handler = static_cast<CgiHandler*>(handler);
+  if (!p_handler) return;  // client socket closed
 
   int n = 0;
   int idx = p_handler->getCgiReqEntityIdx();
