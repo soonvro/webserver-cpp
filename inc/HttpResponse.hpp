@@ -73,7 +73,8 @@ class HttpResponse {
     void                                      setHeaders(const std::map<std::string, std::string>& headers);
     void                                      setContentLength(unsigned long long content_length);
     void                                      setIsChunked(bool is_chunked);
-    void                                      setBody(const std::vector<char>& body);
+    void                                      setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end);
+
     void                                      setIsReady(bool is_ready);
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);

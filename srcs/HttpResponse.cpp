@@ -219,7 +219,7 @@ void                                      HttpResponse::setStatusMessage(const s
 void                                      HttpResponse::setHeaders(const std::map<std::string, std::string>& headers) { _headers = headers; }
 void                                      HttpResponse::setContentLength(unsigned long long content_length) { _content_length = content_length; }
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
-void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
+void                                      HttpResponse::setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end) { _body.insert(_body.end(), it_begin, it_end); }
 void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
