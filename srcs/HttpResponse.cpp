@@ -85,6 +85,7 @@ void                                      HttpResponse::readDir(const std::strin
 
     _body.insert(_body.end(), br.begin(), br.end());
   }
+  closedir(dir);
 }
 
 
