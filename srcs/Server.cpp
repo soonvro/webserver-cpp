@@ -162,6 +162,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     if ((size_t)idx != responses.front().getBody().size()) return ;
     printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
     client.popRess();
+    client.popReqs();
     std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << '\n' << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
@@ -203,7 +204,8 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       try{
         idx = last_request.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
-        cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
+        const RouteRule *rule = findRouteRule(last_request, client_fd);
+        cli.addRess(last_request, *rule).backRess().publishError(411, rule, last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         printReq(last_request, cli.getBuf(), true);
@@ -212,19 +214,19 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       }
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
-      cli.addRess().backRess().publish(last_request, findRouteRule(last_request, client_fd), _clients[client_fd]);
+      const RouteRule *rule = findRouteRule(last_request, client_fd);
+      cli.addRess(last_request, *rule).backRess().publish(last_request, rule, _clients[client_fd]);
       if (cli.backRess().getIsCgi()){
         setCgiSetting(cli.backRess());
       }
       printReq(last_request, cli.getBuf(), false);
       cli.eraseBuf();
-      cli.popReqs();
     }
   }
 
   while ((idx = cli.headerEndIdx(cli.getReadIdx())) >= 0) { // header 읽기 (\r\n\r\n)
-    HttpRequest             req;
     HttpDecoder             hd;
+    HttpRequest&            req = cli.addReqs().backRequest();
     size_t                  size = static_cast<size_t>(idx);
     const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
     cli.addReadIdx(size);
@@ -240,23 +242,24 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       try{
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
-        cli.addRess().backRess().publishError(411, findRouteRule(req, client_fd), req.getMethod());
+        const RouteRule *rule = findRouteRule(req, client_fd);
+        cli.addRess(req, *rule).backRess().publishError(411, rule, req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         return ;
       }
-      cli.addReqs(req);
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
-        cli.addRess().backRess().publish(req, findRouteRule(req, client_fd), _clients[client_fd]);
+        const RouteRule *rule = findRouteRule(req, client_fd);
+        cli.addRess(req, *rule).backRess().publish(req, rule, _clients[client_fd]);
         if (cli.backRess().getIsCgi()){
           setCgiSetting(cli.backRess());
         }
         cli.eraseBuf();
-        cli.popReqs();
       }
     } else {
-      cli.addRess().backRess().publishError(400, findRouteRule(req, client_fd), req.getMethod());
+      const RouteRule *rule = findRouteRule(req, client_fd);
+      cli.addRess(req, *rule).backRess().publishError(400, rule, req.getMethod());
       cli.setEof(true);
     }
   }
@@ -312,8 +315,8 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   _cgi_responses_on_pipe.erase(cgi_fd);
 
   cgi_handler.addBuf("", 1);
-  std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
-  CgiResponse cgi_response(cgi_response_str);
+  // std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
+  CgiResponse cgi_response(cgi_handler.getBuf().begin(), cgi_handler.getBuf().end());
   const CgiType &cgi_type = cgi_response.getType();
   if (cgi_type == kDocument){
     res.setStatusMessage("OK");
@@ -321,7 +324,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
     res.setStatusMessage("Found");
   } else if (cgi_type == kLocalRedir){
     res.setIsReady(false);
-    HttpRequest& req = cgi_handler.getRequest();
+    HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
     req.setQueries("");
     req.setLocation(cgi_response.getHeaders().at("Location"));

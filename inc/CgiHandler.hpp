@@ -12,14 +12,14 @@
 
 class CgiHandler {
   public:
-    CgiHandler();
+    CgiHandler(const HttpRequest& req, const RouteRule& route_rule);
     CgiHandler(const HttpRequest& req, const RouteRule& route_rule,
                const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
     CgiHandler(const CgiHandler& other);
     CgiHandler& operator=(const CgiHandler& other);
 
     int getCgiReqEntityIdx(void);
-    HttpRequest& getRequest(void);
+    const HttpRequest& getRequest(void);
     const int& getReadPipeFromCgi(void) const;
     const int& getWritePipetoCgi(void) const;
 
@@ -42,8 +42,8 @@ class CgiHandler {
     int       _pipe_to_cgi_fd[2];
     int       _pipe_from_cgi_fd[2];
 
-    HttpRequest _req;
-    RouteRule _route_rule;
+    const HttpRequest& _req;
+    const RouteRule& _route_rule;
 
     std::string _server_name;
     int         _port;

@@ -46,7 +46,7 @@ class HttpResponse {
   //  const static std::map<std::string, std::string> contentTypes;
 
   public:
-    HttpResponse();
+    HttpResponse(const HttpRequest& req, const RouteRule& route_rule);
 
     void                                      initContentTypes(void);
     const unsigned short&                     getHttpMajor(void) const;

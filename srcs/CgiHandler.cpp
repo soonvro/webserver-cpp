@@ -8,7 +8,7 @@
 #include "CgiHandler.hpp"
 
 
-CgiHandler::CgiHandler() {}
+CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) : _req(req), _route_rule(route_rule) {}
 
 CgiHandler::CgiHandler(
     const HttpRequest& req, const RouteRule& route_rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error)
@@ -32,8 +32,6 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   if (this == & other)
     return *this;
   _idx = other._idx;
-  _req = other._req;
-  _route_rule = other._route_rule;
   _pipe_from_cgi_fd[PIPE_READ] = other._pipe_from_cgi_fd[PIPE_READ];
   _pipe_from_cgi_fd[PIPE_WRITE] = other._pipe_from_cgi_fd[PIPE_WRITE];
   _pipe_to_cgi_fd[PIPE_READ] = other._pipe_to_cgi_fd[PIPE_READ];
@@ -46,7 +44,7 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
 }
 
 int CgiHandler::getCgiReqEntityIdx(void) { return _idx; }
-HttpRequest& CgiHandler::getRequest(void) { return _req; }
+const HttpRequest& CgiHandler::getRequest(void) { return _req; }
 const int& CgiHandler::getReadPipeFromCgi(void) const { return _pipe_from_cgi_fd[PIPE_READ]; }
 const int& CgiHandler::getWritePipetoCgi(void) const { return _pipe_to_cgi_fd[PIPE_WRITE]; }
 
