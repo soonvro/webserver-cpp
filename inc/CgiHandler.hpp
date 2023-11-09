@@ -2,6 +2,7 @@
 #define CGI_HANDLER_HPP_
 
 #include <unistd.h>
+#include <stdexcept>
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
 

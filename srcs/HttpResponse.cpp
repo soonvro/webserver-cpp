@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <cstring>
 #include "HttpResponse.hpp"
 #include "Client.hpp"
 
@@ -52,7 +53,7 @@ void HttpResponse::initContentTypes(void) {
 }
 
 void                                      HttpResponse::readFile(const std::string& path){
-  std::ifstream i(path);
+  std::ifstream i(path.c_str());
   if (i.fail()){
       throw FileNotFoundException();
   }
@@ -73,15 +74,15 @@ void                                      HttpResponse::readFile(const std::stri
 void                                      HttpResponse::readDir(const std::string& path){
   DIR* dir = opendir((path).c_str());
   struct dirent* entry;
-  if (dir == nullptr){
+  if (dir == NULL){
     throw FileNotFoundException();
   }
   std::string br = "<br />";
-
-  while ((entry = readdir(dir)) != nullptr) {
+  while ((entry = readdir(dir)) != NULL) {
     if (entry->d_name[0] == '.')
       continue ;
     _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
+
     _body.insert(_body.end(), br.begin(), br.end());
   }
 }

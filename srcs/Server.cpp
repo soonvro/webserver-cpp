@@ -3,6 +3,7 @@
 #include <iterator>
 #include <set>
 #include <cstring>
+#include <sys/wait.h>
 
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"

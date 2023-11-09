@@ -2,9 +2,10 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <sstream>
-#include "CgiHandler.hpp"
+#include <string.h>
 #include <unistd.h>
 #include <iostream>
+#include "CgiHandler.hpp"
 
 
 CgiHandler::CgiHandler() {}
