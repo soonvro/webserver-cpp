@@ -309,7 +309,6 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   res.setIsReady(true);
   //enable write event
   //delete cgi_handler from _cgi_handler
-  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
   _cgi_responses_on_pipe.erase(cgi_fd);
 
   cgi_handler.addBuf("", 1);
@@ -321,13 +320,14 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   } else if ( cgi_type == kClientRedirDoc || cgi_type == kClientRedir){
     res.setStatusMessage("Found");
   } else if (cgi_type == kLocalRedir){
-    // res.setIsReady(false);
-    // HttpRequest req = cgi_handler.getRequest();
-    // req.setQueries("");
-    // req.setLocation(cgi_response.getHeader("Location"));
-    // initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), client.getPort(), client.getClientFd());
-    // _is_cgi = true;
-    // setCgiSetting(cli.backRess());
+    res.setIsReady(false);
+    HttpRequest& req = cgi_handler.getRequest();
+    Client& cli = _clients[cgi_handler.getClientFd()];
+    req.setQueries("");
+    req.setLocation(cgi_response.getHeaders().at("Location"));
+    res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
+    res.setIsCgi(true);
+    setCgiSetting(res);
     return ;
   } else {
     const RouteRule& rule = cgi_handler.getRouteRule();
@@ -354,6 +354,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
     res.setHeader("Location", headers.find("Location")->second);
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
+  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
 void Server::init(void) {

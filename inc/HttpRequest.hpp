@@ -38,6 +38,8 @@ class HttpRequest {
     const std::string                         getHeaderValue(std::string h_field) const;
 
     int                                       settingContent(std::vector<char>::const_iterator start, std::vector<char>::const_iterator end);
+    void                                      setQueries(const std::string& queries);
+    void                                      setLocation(const std::string& location);
 
     static bool sParseUrl(
         HttpDecoder* hd, const char *at, unsigned int len) {
