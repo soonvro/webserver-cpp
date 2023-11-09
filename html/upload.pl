@@ -1,7 +1,9 @@
 #!/usr/bin/perl -w
 use CGI;
+use Cwd;
 
-$upload_dir = "/Users/inskim/inskim/5circle/Webserv/upload_files";
+$current_dir = cwd;
+$upload_dir = "$current_dir/upload_files";
 
 $query = new CGI;
 
@@ -23,13 +25,15 @@ print <<END_HTML;
 
 <HTML>
 <HEAD>
-<TITLE>Thanks!</TITLE>
+<TITLE>Saved File : $filename</TITLE>
 </HEAD>
 
-<BODY>
-
+<BODY style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
+<h1>Saved File : <span style="color: cornflowerblue;">$filename</span></h1>
 <P>Thanks for uploading your photo!</P>
-<img src="/upload_files/$filename" border="0">
+<div style="padding: 10px;border: 2px solid lightblue;border-radius: 10px;">
+<img src="/upload_files/$filename" style="border-radius: 10px;"/>
+</div>
 </BODY>
 </HTML>
 
