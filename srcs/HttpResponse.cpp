@@ -79,9 +79,11 @@ void                                      HttpResponse::readDir(const std::strin
   }
   std::string br = "<br />";
   while ((entry = readdir(dir)) != NULL) {
-    _body.insert(_body.end(), entry->d_name, entry->d_name + std::strlen(entry->d_name));
-    _body.insert(_body.end(), br.begin(), br.end());
+    if (entry->d_name[0] == '.')
+      continue ;
+    _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
 
+    _body.insert(_body.end(), br.begin(), br.end());
   }
 }
 

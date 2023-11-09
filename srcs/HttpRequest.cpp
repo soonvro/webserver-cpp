@@ -75,6 +75,10 @@ const std::string                         HttpRequest::getHeaderValue(std::strin
   return std::string();
 }
 
+// Setters
+void HttpRequest::setQueries(const std::string& queries) { _queries = queries; }
+void HttpRequest::setLocation(const std::string& location) { _location = location; }
+
 /******************************************************************************/
 /*                                   Private                                  */
 /******************************************************************************/
