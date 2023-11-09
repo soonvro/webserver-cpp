@@ -77,10 +77,12 @@ void                                      HttpResponse::readDir(const std::strin
     throw FileNotFoundException();
   }
   std::string br = "<br />";
+
   while ((entry = readdir(dir)) != nullptr) {
+    if (entry->d_name[0] == '.')
+      continue ;
     _body.insert(_body.end(), entry->d_name, entry->d_name + strlen(entry->d_name));
     _body.insert(_body.end(), br.begin(), br.end());
-
   }
 }
 

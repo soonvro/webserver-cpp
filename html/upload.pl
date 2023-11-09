@@ -1,37 +1,36 @@
-  #!/usr/bin/perl -w
-  use CGI;
+#!/usr/bin/perl -w
+use CGI;
 
-  $upload_dir = "/Users/inskim/inskim/5circle/Webserv/upload_files";
+$upload_dir = "/Users/inskim/inskim/5circle/Webserv/upload_files";
 
-  $query = new CGI;
+$query = new CGI;
 
-  $filename = $query->param("filename");
-  $filename =~ s/.*[\/\\](.*)/$1/;
-  $upload_filehandle = $query->upload("filename");
+$filename = $query->param("filename");
+$filename =~ s/.*[\/\\](.*)/$1/;
+$upload_filehandle = $query->upload("filename");
 
-  open UPLOADFILE, ">$upload_dir/$filename";
+open UPLOADFILE, ">$upload_dir/$filename";
 
-  while ( <$upload_filehandle> )
-  {
-    print UPLOADFILE;
-  }
+while ( <$upload_filehandle> )
+{
+  print UPLOADFILE;
+}
 
-  close UPLOADFILE;
+close UPLOADFILE;
 
-  print $query->header ( );
-  print <<END_HTML;
+print $query->header ( );
+print <<END_HTML;
 
-  <HTML>
-  <HEAD>
-  <TITLE>Thanks!</TITLE>
-  </HEAD>
+<HTML>
+<HEAD>
+<TITLE>Thanks!</TITLE>
+</HEAD>
 
-  <BODY>
+<BODY>
 
-  <P>Thanks for uploading your photo!</P>
-  <img src="/upload/$filename" border="0">
+<P>Thanks for uploading your photo!</P>
+<img src="/upload_files/$filename" border="0">
+</BODY>
+</HTML>
 
-  </BODY>
-  </HTML>
-
-  END_HTML
+END_HTML
