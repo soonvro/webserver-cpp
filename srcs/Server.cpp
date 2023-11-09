@@ -439,9 +439,7 @@ void Server::run(void) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients.count(curr_event->ident)) {  // client read event
-          struct timespec a, b;
           _clients[curr_event->ident].setLastRequestTime(getTime());
-          clock_gettime(CLOCK_REALTIME, &a);
           try{
             recvHttpRequest(curr_event->ident, curr_event->data);
           } catch (std::exception& e) {
@@ -451,28 +449,14 @@ void Server::run(void) {
             res.publishError(502, 0, res.getMethod());
             changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
           }
-          clock_gettime(CLOCK_REALTIME, &b);
-         std::cout << "recvHttpRequest time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           recvCgiResponse(curr_event->ident, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "recvCgiResponse time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  //write event
         if (_clients.count(curr_event->ident)){
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           sendHttpResponse(curr_event->ident, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "sendHttpResponse time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         } else {
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           sendCgiRequest(curr_event->ident, curr_event->udata, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "sendCgiRequest time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         }
       } else {
         std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Who you are??? XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
