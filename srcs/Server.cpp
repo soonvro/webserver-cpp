@@ -110,9 +110,16 @@ void Server::handleErrorKevent(int fd) {
 }
 
 void Server::disconnectClient(const int client_fd) {
-  std::cout << "Client disconnected: " << client_fd << std::endl;
+  std::cout << "Client disconnected: " << client_fd << "... " << std::flush;
   close(client_fd);
+  std::queue<HttpResponse>& ress = (_clients[client_fd]).getRess();
+  while (!ress.empty()) {
+    close(ress.front().getCgiHandler().getWritePipetoCgi());
+    close(ress.front().getCgiHandler().getReadPipeFromCgi());
+    ress.pop();
+  }
   _clients.erase(client_fd);
+  std::cout << "Done." << std::endl;
 }
 
 void Server::connectClient(int server_socket) {
@@ -268,7 +275,10 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
 
 void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   CgiHandler* p_handler = static_cast<CgiHandler*>(handler);
-  if (!p_handler) return;  // client socket closed
+  if (!p_handler) {  // client socket closed
+    close(cgi_fd);
+    return;
+  }
 
   int n = 0;
   int idx = p_handler->getCgiReqEntityIdx();
@@ -420,6 +430,7 @@ void Server::run(void) {
         }
       // socket disconnect event
       } else if ((curr_event->flags & EV_EOF) && _clients.count(curr_event->ident)) {
+        if(DEBUG_DETAIL_KEVENT) std::cout << "+ Socket disconnect event" << std::endl;
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
