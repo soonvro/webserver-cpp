@@ -1,6 +1,6 @@
 NAME			=	Webserv
 
-CXX				=	C++
+CXX				=	c++
 CXXFLAGS	=	-Wall -Wextra -Werror -std=c++98 -MMD # -O1 # -g #-fsanitize=undefined #-fsanitize=address
 
 SRCDIR		=	./srcs
