@@ -6,7 +6,7 @@
 /*   By: inskim <inskim@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/12 11:00:04 by sokwon            #+#    #+#             */
-/*   Updated: 2023/10/11 17:59:25 by inskim           ###   ########.fr       */
+/*   Updated: 2023/11/10 13:54:42 by inskim           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
                     if (client_socket == -1)
                         handle_error("error: accept() error");
                     std::cout << "accept new client: " << client_socket << std::endl;
-                    fcntl(client_socket, F_SETFL, O_NONBLOCK);
+                    fcntl(client_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC);
 
                     /* add event for client socket - add read && write event */
                     change_events(change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
