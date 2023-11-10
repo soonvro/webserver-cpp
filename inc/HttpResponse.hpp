@@ -1,18 +1,21 @@
 #ifndef HTTPRESPONSE_HPP_
 #define HTTPRESPONSE_HPP_
 
-#include "HttpDecoder.hpp"
-#include "HttpRequest.hpp"
-#include "RouteRule.hpp"
-#include "CgiHandler.hpp"
-// #include "Client.hpp" 
-class Client;
-#include "HttpDecoderEnums.h"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
 #include <iostream>
+
+#include "HttpDecoder.hpp"
+#include "HttpRequest.hpp"
+#include "RouteRule.hpp"
+#include "CgiHandler.hpp"
+#include "HttpDecoderEnums.h"
+
+#define RESPONSE_BUF_SIZE 134217728
+
+class Client;
 
 class HttpResponse {
   private:
@@ -43,10 +46,8 @@ class HttpResponse {
 
     void                                      readDir(const std::string& path);
 
-  //  const static std::map<std::string, std::string> contentTypes;
-
   public:
-    HttpResponse();
+    HttpResponse(const HttpRequest& req, const RouteRule& route_rule);
 
     void                                      initContentTypes(void);
     const unsigned short&                     getHttpMajor(void) const;
@@ -73,7 +74,8 @@ class HttpResponse {
     void                                      setHeaders(const std::map<std::string, std::string>& headers);
     void                                      setContentLength(unsigned long long content_length);
     void                                      setIsChunked(bool is_chunked);
-    void                                      setBody(const std::vector<char>& body);
+    void                                      setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end);
+
     void                                      setIsReady(bool is_ready);
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);
@@ -85,9 +87,9 @@ class HttpResponse {
     void                                      publishError(int status, const RouteRule*, enum HPS::Method method);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
-    void initializeCgiProcess(const HttpRequest& req, const RouteRule& rule,
-                              const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
-    int  cgiExecute(void) throw(std::runtime_error);
+    void                                      initializeCgiProcess(const HttpRequest& req, const RouteRule& rule, \
+                                                  const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
+    int                                       cgiExecute(void) throw(std::runtime_error);
     
     void                                      readFile(const std::string& path);
 

@@ -1,19 +1,20 @@
 #ifndef CLIENT_HPP_
 #define CLIENT_HPP_
 
-#include "HttpRequest.hpp"
-#include "HttpResponse.hpp"
 #include <queue>
 
-#define CLIENT_BUF_SIZE 1073741824
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+
+#define CLIENT_BUF_SIZE 134217728
 
 class Client {
   private:
     std::vector<char>                 _buf;
     size_t                            _read_idx;
 
-    std::queue<HttpRequest>          _reqs;
-    std::queue<HttpResponse>         _ress;
+    std::queue<HttpRequest>           _reqs;
+    std::queue<HttpResponse>          _ress;
 
     bool                              _has_eof;
 
@@ -37,8 +38,8 @@ class Client {
     const time_t&                       getLastRequestTime() const;
     const time_t&                       getTimeoutInterval() const;
 
-    std::vector<char>::const_iterator getReadIter(void);
-    std::vector<char>::const_iterator getEndIter(void);
+    std::vector<char>::const_iterator   getReadIter(void);
+    std::vector<char>::const_iterator   getEndIter(void);
 
     HttpResponse&                       backRess(void);
 
@@ -48,8 +49,9 @@ class Client {
 
     void                                addBuf(const char* buf, size_t size);
     void                                addReadIdx(size_t idx);
-    void                                addReqs(HttpRequest& req);
-    Client&                             addRess(void);
+    Client&                             addReqs(void);
+    Client&                             addRess(const HttpRequest& req, const RouteRule& route_rule);
+
 
     void                                eraseBuf(void);
     void                                popReqs(void);

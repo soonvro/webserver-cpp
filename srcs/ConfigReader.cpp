@@ -1,11 +1,10 @@
-#include "ConfigReader.hpp"
-
-#include <iostream>
 #include <sstream>
 
+#include "ConfigReader.hpp"
 #include "HttpDecoderEnums.h"
 
-ConfigReader::ConfigReader(const char* filename) : filename(filename) {}
+
+ConfigReader::ConfigReader(const char* filename) : _filename(filename) {}
 
 void ConfigReader::onStart(std::string word, std::ifstream& config) {
   if (word == "http") {
@@ -262,7 +261,7 @@ void ConfigReader::onServerBlockEnd(std::string word, std::ifstream& config) {
 }
 
 void ConfigReader::readFile() {
-  std::ifstream i(filename.c_str());
+  std::ifstream i(_filename.c_str());
   if (i.fail()) throw std::invalid_argument("cannot read file");
   std::string word;
   _state = kMainStart;

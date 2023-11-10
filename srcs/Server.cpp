@@ -1,14 +1,11 @@
-#include "Server.hpp"
-
 #include <iterator>
 #include <set>
 #include <cstring>
 #include <sys/wait.h>
 
+#include "Server.hpp"
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"
-#include "CgiResponse.hpp"
-
 
 #define DEBUGMOD 0
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
@@ -169,6 +166,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     if ((size_t)idx != responses.front().getBody().size()) return ;
     printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
     client.popRess();
+    client.popReqs();
     std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << '\n' << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
@@ -210,28 +208,28 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       try{
         idx = last_request.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
-        cli.addRess().backRess().publishError(411, findRouteRule(last_request, client_fd), last_request.getMethod());
+        const RouteRule *rule = findRouteRule(last_request, client_fd);
+        cli.addRess(last_request, *rule).backRess().publishError(411, rule, last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         printReq(last_request, cli.getBuf(), true);
-        cli.popReqs();
         return ;
       }
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
-      cli.addRess().backRess().publish(last_request, findRouteRule(last_request, client_fd), _clients[client_fd]);
+      const RouteRule *rule = findRouteRule(last_request, client_fd);
+      cli.addRess(last_request, *rule).backRess().publish(last_request, rule, _clients[client_fd]);
       if (cli.backRess().getIsCgi()){
         setCgiSetting(cli.backRess());
       }
       printReq(last_request, cli.getBuf(), false);
       cli.eraseBuf();
-      cli.popReqs();
     }
   }
 
   while ((idx = cli.headerEndIdx(cli.getReadIdx())) >= 0) { // header 읽기 (\r\n\r\n)
-    HttpRequest             req;
     HttpDecoder             hd;
+    HttpRequest&            req = cli.addReqs().backRequest();
     size_t                  size = static_cast<size_t>(idx);
     const std::vector<char> data = cli.subBuf(cli.getReadIdx(), cli.getReadIdx() + size);
     cli.addReadIdx(size);
@@ -247,23 +245,24 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       try{
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
-        cli.addRess().backRess().publishError(411, findRouteRule(req, client_fd), req.getMethod());
+        const RouteRule *rule = findRouteRule(req, client_fd);
+        cli.addRess(req, *rule).backRess().publishError(411, rule, req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         return ;
       }
-      cli.addReqs(req);
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
-        cli.addRess().backRess().publish(req, findRouteRule(req, client_fd), _clients[client_fd]);
+        const RouteRule *rule = findRouteRule(req, client_fd);
+        cli.addRess(req, *rule).backRess().publish(req, rule, _clients[client_fd]);
         if (cli.backRess().getIsCgi()){
           setCgiSetting(cli.backRess());
         }
         cli.eraseBuf();
-        cli.popReqs();
       }
     } else {
-      cli.addRess().backRess().publishError(400, findRouteRule(req, client_fd), req.getMethod());
+      const RouteRule *rule = findRouteRule(req, client_fd);
+      cli.addRess(req, *rule).backRess().publishError(400, rule, req.getMethod());
       cli.setEof(true);
     }
   }
@@ -322,20 +321,57 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   //delete cgi_handler from _cgi_handler
   _cgi_responses_on_pipe.erase(cgi_fd);
 
-  cgi_handler.addBuf("", 1);
-  std::string cgi_response_str(&(cgi_handler.getBuf())[0]);
-  CgiResponse cgi_response(cgi_response_str);
-  const CgiType &cgi_type = cgi_response.getType();
+  std::vector<char>::const_iterator it = cgi_handler.getBuf().begin();
+  std::string key;
+  std::string value;
+  std::vector<char>::const_iterator start = it;
+  while (it != cgi_handler.getBuf().end()) {
+    if (*it == ':'){
+      key = std::string(start, it);
+      start = it + 1;
+    }else if (*it == '\n'){
+      if (*(start - 1) != ':' || *(start - 1) == '\n') { ++it; break ; }
+      if (*(it - 1) == '\r') value = std::string(start, it - 1);
+      else value = std::string(start, it);
+      res.setHeader(key, value);
+      start = it + 1;
+    }
+    ++it;
+  }
+  res.setBody(it, cgi_handler.getBuf().end());
+  const std::map<std::string, std::string>& headers = res.getHeader();
+  int status;
+  CgiType cgi_type;
+  if (headers.find("Location") != headers.end()){
+    const std::string& location = headers.find("Location")->second;
+    if (location[0] == '/'){
+      status = 300;
+      cgi_type = kLocalRedir;
+    }else{
+      status = 302;
+      cgi_type = kClientRedir;
+    }
+  } else if (headers.find("Content-type") != headers.end() || headers.find("Content-Type") != headers.end()) {
+      status = 200;
+      cgi_type = kDocument;
+  } else {
+      status = 404;
+      cgi_type = kError;
+  }   
+  if (cgi_type == kClientRedir && res.getBody().size() > 0){
+    cgi_type = kClientRedirDoc;
+  }
+  res.setStatus(status);
   if (cgi_type == kDocument){
     res.setStatusMessage("OK");
   } else if ( cgi_type == kClientRedirDoc || cgi_type == kClientRedir){
     res.setStatusMessage("Found");
   } else if (cgi_type == kLocalRedir){
     res.setIsReady(false);
-    HttpRequest& req = cgi_handler.getRequest();
+    HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
     req.setQueries("");
-    req.setLocation(cgi_response.getHeaders().at("Location"));
+    req.setLocation(headers.find("Location")->second);
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
     setCgiSetting(res);
@@ -355,14 +391,6 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
     }
   
   }
-  res.setStatus(cgi_response.getStatus());
-  res.setBody(cgi_response.getBody());
-  res.addContentLength();
-  const std::map<std::string, std::string>& headers = cgi_response.getHeaders();
-  if (headers.find("Content-Type") != headers.end())
-    res.setHeader("Content-Type", headers.find("Content-Type")->second);
-  if (headers.find("Location") != headers.end())
-    res.setHeader("Location", headers.find("Location")->second);
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);

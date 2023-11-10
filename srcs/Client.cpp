@@ -12,6 +12,7 @@ Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout
 Client& Client::operator=(const Client& other) {
   if (this == &other)
     return *this;
+  _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _read_idx = other._read_idx;
   _reqs = other._reqs;
@@ -51,8 +52,8 @@ void                                Client::addBuf(const char* buf, size_t size)
   _buf.insert(_buf.end(), buf, buf + size);
 }
 void                                Client::addReadIdx(size_t idx) { _read_idx += idx; }
-void                                Client::addReqs(HttpRequest& req) { _reqs.push(req); }
-Client&                             Client::addRess(void) { _ress.push(HttpResponse()); return *this; }
+Client&                             Client::addReqs(void) { _reqs.push(HttpRequest()); return *this; }
+Client&                             Client::addRess(const HttpRequest& req, const RouteRule& route_rule) { _ress.push(HttpResponse(req, route_rule)); return *this; }
 void                                Client::eraseBuf(void) { _buf.erase(_buf.begin(), _buf.begin() + _read_idx); _read_idx = 0; }
 void                                Client::popReqs(void) { _reqs.pop(); }
 void                                Client::popRess(void) { _ress.pop(); }

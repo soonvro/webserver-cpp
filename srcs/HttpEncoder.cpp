@@ -1,6 +1,7 @@
+#include <iterator>
+
 #include "HttpEncoder.hpp"
 #include "HttpResponse.hpp"
-#include <iterator>
 
 
 std::string HttpEncoder::execute(const HttpResponse& res){

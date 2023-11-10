@@ -5,38 +5,19 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <cstring>
+
 #include "HttpResponse.hpp"
 #include "Client.hpp"
 
-HttpResponse::HttpResponse() : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _method(HPS::kHEAD), _entity_idx(0) {
+HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) : _http_major(1), _http_minor(1), _status(0), \
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), _entity_idx(0) {
     this->initContentTypes();
-}
+    _body.reserve(RESPONSE_BUF_SIZE);
+  }
 
 #define BUF_SIZE 4096
 
 void HttpResponse::initContentTypes(void) {
-  // const std::map<std::string, std::string> HttpResponse::contentTypes = {
-//                                                               {".html", "text/html"},
-//                                                               {".css", "text/css"},
-//                                                               {".js", "application/javascript"},
-//                                                               {".png", "image/png"},
-//                                                               {".jpg", "image/jpeg"},
-//                                                               {".jpeg", "image/jpeg"},
-//                                                               {".gif", "image/gif"},
-//                                                               {".json", "application/json"},
-//                                                               {".pdf", "application/pdf"},
-//                                                               {".zip", "application/zip"},
-//                                                               {".tar", "application/x-tar"},
-//                                                               {".gz", "application/gzip"},
-//                                                               {".mp4", "video/mp4"},
-//                                                               {".mp3", "audio/mpeg"},
-//                                                               {".avi", "video/x-msvideo"},
-//                                                               {".mpeg", "video/mpeg"},
-//                                                               {".wav", "audio/x-wav"},
-//                                                               {".ogg", "audio/ogg"},
-//                                                               {".xml", "text/xml"},
-//                                                               {".txt", "text/plain"},
   const char* extensions[] = {
     ".html", ".css", ".js", ".png", ".jpg",
     ".jpeg", ".gif", ".json", ".pdf", ".zip",
@@ -219,7 +200,7 @@ void                                      HttpResponse::setStatusMessage(const s
 void                                      HttpResponse::setHeaders(const std::map<std::string, std::string>& headers) { _headers = headers; }
 void                                      HttpResponse::setContentLength(unsigned long long content_length) { _content_length = content_length; }
 void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
-void                                      HttpResponse::setBody(const std::vector<char>& body) { _body = body; }
+void                                      HttpResponse::setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end) { _body.insert(_body.end(), it_begin, it_end); }
 void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }

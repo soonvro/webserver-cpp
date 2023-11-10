@@ -24,12 +24,20 @@
 #define EVENT_LIST_SIZE 512
 #define KEEPALIVETIMEOUT 600
 
+enum CgiType{
+  kDocument,
+  kLocalRedir,
+  kClientRedir,
+  kClientRedirDoc,
+  kError
+};
+
 class Server {
  private:
   Host                                        _default_host;
   std::map<std::pair<std::string, int>, Host> _hosts;
 
-  std::map<int, int> _server_sockets;  // <socket_fd, port>
+  std::map<int, int>                          _server_sockets;  // <socket_fd, port>
 
 
   int                                         _kq;
@@ -39,29 +47,27 @@ class Server {
   std::map<int, HttpResponse*>                _cgi_responses_on_pipe;  //<pipe_in_fd, pointer to response>
   std::map<int, HttpResponse*>                _cgi_responses_on_pid;  //<pid, pointer to response>
 
-  void      setSocketOption(int socket_fd);
+  void              setSocketOption(int socket_fd);
 
-  void      changeEvents(std::vector<struct kevent> &change_list, uintptr_t ident,
+  void              changeEvents(std::vector<struct kevent> &change_list, uintptr_t ident,
                      int16_t filter, uint16_t flags, uint32_t fflags,
                      intptr_t data, void *udata);
 
-  void      handleErrorKevent(int ident);
-  void      disconnectClient(const int client_fd);
+  void              handleErrorKevent(int ident);
+  void              disconnectClient(const int client_fd);
+  void              connectClient(int server_socket);
 
-  void      connectClient(int server_socket);
+  void              sendHttpResponse(int client_fd, int64_t event_size);
+  void              recvHttpRequest(int client_fd, int64_t event_size);
 
-  void      sendHttpResponse(int client_fd, int64_t event_size);
-  // void      executeCgi(HttpResponse& res, HttpRequest& last_request, RouteRule& rule, int client_fd);
-  void      setCgiSetting(HttpResponse& res); 
-  void      recvHttpRequest(int client_fd, int64_t event_size);
+  void              sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
+  void              recvCgiResponse(int cgi_fd, int64_t event_size);
+  void              setCgiSetting(HttpResponse& res); 
 
-  void      sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
-  void      recvCgiResponse(int cgi_fd, int64_t event_size);
+  const RouteRule*  findRouteRule(const HttpRequest& req, const int& client_fd);
 
-  const RouteRule* findRouteRule(const HttpRequest& req, const int& client_fd);
-
-  time_t    getTime(void);  //return seconds
-  void      checkTimeout(void);
+  time_t            getTime(void);  //return seconds
+  void              checkTimeout(void);
 
 
  public:

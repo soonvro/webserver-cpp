@@ -13,7 +13,7 @@ class RouteRule {
   int                           _accepted_methods;  
 // 비트 자릿수로 allow 확인 get 1 head 2 post 3 delete 4
 
-  std::pair<int, std::string>    _redirection;
+  std::pair<int, std::string>   _redirection;
   bool                          _autoIndex;
   std::string                   _index_page;
   std::map<int, std::string>    _error_pages;
@@ -27,11 +27,11 @@ class RouteRule {
   RouteRule(const RouteRule& other);
   RouteRule& operator=(const RouteRule& other);
 
-  bool hasRedirection(int code) const;
-  void addRedirection(int code, const std::string& url);
+  bool                                hasRedirection(int code) const;
+  void                                addRedirection(int code, const std::string& url);
 
-  bool hasErrorPage(int code) const;
-  void addErrorPage(int code, const std::string& url);
+  bool                                hasErrorPage(int code) const;
+  void                                addErrorPage(int code, const std::string& url);
 
   const std::string                   getRoot() const;
 
