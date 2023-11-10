@@ -107,9 +107,16 @@ void Server::handleErrorKevent(int fd) {
 }
 
 void Server::disconnectClient(const int client_fd) {
-  std::cout << "Client disconnected: " << client_fd << std::endl;
+  std::cout << "Client disconnected: " << client_fd << "... " << std::flush;
   close(client_fd);
+  std::queue<HttpResponse>& ress = (_clients[client_fd]).getRess();
+  while (!ress.empty()) {
+    close(ress.front().getCgiHandler().getWritePipetoCgi());
+    close(ress.front().getCgiHandler().getReadPipeFromCgi());
+    ress.pop();
+  }
   _clients.erase(client_fd);
+  std::cout << "Done." << std::endl;
 }
 
 void Server::connectClient(int server_socket) {
@@ -267,6 +274,10 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
 
 void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   CgiHandler* p_handler = static_cast<CgiHandler*>(handler);
+  if (!p_handler) {  // client socket closed
+    close(cgi_fd);
+    return;
+  }
 
   int n = 0;
   int idx = p_handler->getCgiReqEntityIdx();
@@ -448,6 +459,7 @@ void Server::run(void) {
         }
       // socket disconnect event
       } else if ((curr_event->flags & EV_EOF) && _clients.count(curr_event->ident)) {
+        if(DEBUG_DETAIL_KEVENT) std::cout << "+ Socket disconnect event" << std::endl;
         disconnectClient(curr_event->ident);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
         checkTimeout();
@@ -455,9 +467,7 @@ void Server::run(void) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients.count(curr_event->ident)) {  // client read event
-          struct timespec a, b;
           _clients[curr_event->ident].setLastRequestTime(getTime());
-          clock_gettime(CLOCK_REALTIME, &a);
           try{
             recvHttpRequest(curr_event->ident, curr_event->data);
           } catch (std::exception& e) {
@@ -467,28 +477,14 @@ void Server::run(void) {
             res.publishError(502, 0, res.getMethod());
             changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
           }
-          clock_gettime(CLOCK_REALTIME, &b);
-         std::cout << "recvHttpRequest time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         } else if (_cgi_responses_on_pipe.count(curr_event->ident)) {  // cgi read event
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           recvCgiResponse(curr_event->ident, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "recvCgiResponse time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         }
       } else if (curr_event->filter == EVFILT_WRITE) {  //write event
         if (_clients.count(curr_event->ident)){
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           sendHttpResponse(curr_event->ident, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "sendHttpResponse time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         } else {
-          struct timespec a, b;
-          clock_gettime(CLOCK_REALTIME, &a);
           sendCgiRequest(curr_event->ident, curr_event->udata, curr_event->data);
-          clock_gettime(CLOCK_REALTIME, &b);
-          std::cout << "sendCgiRequest time : " << (double)(b.tv_sec - a.tv_sec) * 1000000 + (double)(b.tv_nsec - a.tv_nsec) / 1000 << std::endl;
         }
       } else {
         std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Who you are??? XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
