@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <cstring>
+
 #include "HttpResponse.hpp"
 #include "Client.hpp"
 
@@ -17,27 +18,6 @@ HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) 
 #define BUF_SIZE 4096
 
 void HttpResponse::initContentTypes(void) {
-  // const std::map<std::string, std::string> HttpResponse::contentTypes = {
-//                                                               {".html", "text/html"},
-//                                                               {".css", "text/css"},
-//                                                               {".js", "application/javascript"},
-//                                                               {".png", "image/png"},
-//                                                               {".jpg", "image/jpeg"},
-//                                                               {".jpeg", "image/jpeg"},
-//                                                               {".gif", "image/gif"},
-//                                                               {".json", "application/json"},
-//                                                               {".pdf", "application/pdf"},
-//                                                               {".zip", "application/zip"},
-//                                                               {".tar", "application/x-tar"},
-//                                                               {".gz", "application/gzip"},
-//                                                               {".mp4", "video/mp4"},
-//                                                               {".mp3", "audio/mpeg"},
-//                                                               {".avi", "video/x-msvideo"},
-//                                                               {".mpeg", "video/mpeg"},
-//                                                               {".wav", "audio/x-wav"},
-//                                                               {".ogg", "audio/ogg"},
-//                                                               {".xml", "text/xml"},
-//                                                               {".txt", "text/plain"},
   const char* extensions[] = {
     ".html", ".css", ".js", ".png", ".jpg",
     ".jpeg", ".gif", ".json", ".pdf", ".zip",

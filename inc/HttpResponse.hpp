@@ -1,16 +1,17 @@
 #ifndef HTTPRESPONSE_HPP_
 #define HTTPRESPONSE_HPP_
 
-#include "HttpDecoder.hpp"
-#include "HttpRequest.hpp"
-#include "RouteRule.hpp"
-#include "CgiHandler.hpp"
-#include "HttpDecoderEnums.h"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
 #include <iostream>
+
+#include "HttpDecoder.hpp"
+#include "HttpRequest.hpp"
+#include "RouteRule.hpp"
+#include "CgiHandler.hpp"
+#include "HttpDecoderEnums.h"
 
 #define RESPONSE_BUF_SIZE 134217728
 
@@ -44,8 +45,6 @@ class HttpResponse {
     std::map<std::string, std::string>        _contentTypes;
 
     void                                      readDir(const std::string& path);
-
-  //  const static std::map<std::string, std::string> contentTypes;
 
   public:
     HttpResponse(const HttpRequest& req, const RouteRule& route_rule);
@@ -88,9 +87,9 @@ class HttpResponse {
     void                                      publishError(int status, const RouteRule*, enum HPS::Method method);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
-    void initializeCgiProcess(const HttpRequest& req, const RouteRule& rule,
-                              const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
-    int  cgiExecute(void) throw(std::runtime_error);
+    void                                      initializeCgiProcess(const HttpRequest& req, const RouteRule& rule, \
+                                                  const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
+    int                                       cgiExecute(void) throw(std::runtime_error);
     
     void                                      readFile(const std::string& path);
 

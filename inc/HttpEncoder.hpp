@@ -1,8 +1,9 @@
 #ifndef ENCODER_HPP_
 #define ENCODER_HPP_
 
-#include "HttpResponse.hpp"
 #include <string>
+
+#include "HttpResponse.hpp"
 
 class HttpEncoder{
   public:

@@ -1,5 +1,6 @@
-#include "CgiResponse.hpp"
 #include <sstream>
+
+#include "CgiResponse.hpp"
 
 CgiResponse::CgiResponse(std::string& s){
   std::string line;

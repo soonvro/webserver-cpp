@@ -1,9 +1,9 @@
-#include "HttpDecoder.hpp"
-
 #include <cctype> //isalpha
 #include <cstring> //memcmp, memset
 #include <limits> // std::numeric_limits<unsigned long long>::max()
 #include <stdexcept>
+
+#include "HttpDecoder.hpp"
 
 #define URL_LEN_MAX 2000
 

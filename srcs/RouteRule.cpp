@@ -1,5 +1,4 @@
 #include "RouteRule.hpp"
-
 #include "HttpDecoderEnums.h"
 
 RouteRule::RouteRule()

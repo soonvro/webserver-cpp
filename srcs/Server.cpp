@@ -1,10 +1,9 @@
-#include "Server.hpp"
-
 #include <iterator>
 #include <set>
 #include <cstring>
 #include <sys/wait.h>
 
+#include "Server.hpp"
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"
 #include "CgiResponse.hpp"

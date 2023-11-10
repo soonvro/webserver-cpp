@@ -23,10 +23,10 @@ class CgiResponse{
     const std::map<std::string, std::string>&       getHeaders(void) const;
 
   private:
-    std::map<std::string, std::string> _headers;
-    std::vector<char> _body;
-    CgiType _type;
-    unsigned short _status;
+    std::map<std::string, std::string>              _headers;
+    std::vector<char>                               _body;
+    CgiType                                         _type;
+    unsigned short                                  _status;
 };
 
 #endif

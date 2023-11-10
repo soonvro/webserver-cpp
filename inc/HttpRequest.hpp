@@ -1,11 +1,12 @@
 #ifndef HTTTP_REQUEST_HPP_
 #define HTTTP_REQUEST_HPP_
 
-#include "HttpDecoder.hpp"
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "HttpDecoder.hpp"
 
 #define REQUEST_BUF_SIZE 134217728
 
