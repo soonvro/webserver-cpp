@@ -167,7 +167,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
     client.popRess();
     client.popReqs();
-    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << '\n' << std::endl;
+    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
   }
   if (client.getEof()) disconnectClient(client_fd);
   else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
@@ -267,7 +267,6 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     }
   }
 
-  std::cout << "response size: " << cli.getRess().size() << '\n' << std::endl;
   if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
@@ -310,7 +309,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   delete[] buf;
   if (n < 0)  {
     res.setIsReady(true);
-    res.publishError(500, 0, res.getMethod());
+    res.publishError(503, 0, res.getMethod());
     changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
     return ;
   }
