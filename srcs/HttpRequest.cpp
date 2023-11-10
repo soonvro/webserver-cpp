@@ -126,6 +126,7 @@ void HttpRequest::decode_location(void) {
       decoded_loc += _location[i];
     }
   }
+  _location = decoded_loc;
 }
 
 unsigned char HttpRequest::toLower(unsigned char c) { return tolower(c); }
