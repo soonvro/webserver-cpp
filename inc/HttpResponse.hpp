@@ -5,14 +5,16 @@
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
 #include "CgiHandler.hpp"
-// #include "Client.hpp" 
-class Client;
 #include "HttpDecoderEnums.h"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
 #include <iostream>
+
+#define RESPONSE_BUF_SIZE 134217728
+
+class Client;
 
 class HttpResponse {
   private:

@@ -8,12 +8,15 @@
 #include "CgiHandler.hpp"
 
 
-CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) : _req(req), _route_rule(route_rule) {}
+CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) : _req(req), _route_rule(route_rule) {
+  _buf.resize(CGI_HANDLER_BUF_SIZE);
+}
 
 CgiHandler::CgiHandler(
     const HttpRequest& req, const RouteRule& route_rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error)
   : _idx(0), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) {
   this->setPipe();
+  _buf.resize(CGI_HANDLER_BUF_SIZE);
 }
 
 CgiHandler::CgiHandler(const CgiHandler& other)

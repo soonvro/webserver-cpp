@@ -5,7 +5,7 @@
 #include "HttpResponse.hpp"
 #include <queue>
 
-#define CLIENT_BUF_SIZE 1073741824
+#define CLIENT_BUF_SIZE 134217728
 
 class Client {
   private:

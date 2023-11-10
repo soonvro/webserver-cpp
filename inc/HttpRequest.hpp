@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#define REQUEST_BUF_SIZE 1073741824
+#define REQUEST_BUF_SIZE 134217728
 
 enum HttpRequestHeader {
   kHeaderNo,

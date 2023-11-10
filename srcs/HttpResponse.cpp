@@ -11,6 +11,7 @@
 HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) : _http_major(1), _http_minor(1), _status(0), \
   _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), _entity_idx(0) {
     this->initContentTypes();
+    _buf.resize(RESPONSE_BUF_SIZE);
   }
 
 #define BUF_SIZE 4096

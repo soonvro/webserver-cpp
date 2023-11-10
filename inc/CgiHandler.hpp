@@ -9,6 +9,7 @@
 #define DEFAULT_CONTENT_TYPE "text/html"
 #define PIPE_READ  0
 #define PIPE_WRITE 1
+#define CGI_HANDLER_BUF_SIZE 134217728
 
 class CgiHandler {
   public:
