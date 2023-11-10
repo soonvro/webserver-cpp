@@ -7,8 +7,6 @@ $upload_dir = "$current_dir/upload_files";
 
 $query = new CGI;
 
-$upload_filehandle = $query->upload("filename");
-
 print $query->header ( );
 print <<END_HTML;
 <html>
