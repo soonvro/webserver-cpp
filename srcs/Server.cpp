@@ -287,7 +287,7 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
   n = write(cgi_fd, &(p_handler->getRequest().getEntity())[idx], \
     (int64_t)p_handler->getRequest().getEntity().size() - idx > event_size ? event_size : p_handler->getRequest().getEntity().size() - idx);
   if (n < 0) {
-    disconnectClient(p_handler->getClientFd());
+    close(cgi_fd);
     return ;
   }
   idx += n;
@@ -309,7 +309,9 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   if (n > 0) cgi_handler.addBuf(buf, n);
   delete[] buf;
   if (n < 0)  {
-    disconnectClient(cgi_handler.getClientFd());
+    res.setIsReady(true);
+    res.publishError(500, 0, res.getMethod());
+    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
     return ;
   }
   if (n != 0)  return ;
@@ -389,7 +391,6 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
     } else {
       res.publishError(404,  0, res.getMethod());
     }
-  
   }
   res.setHeader("Connection", "keep-alive");
   res.addContentLength();
@@ -484,7 +485,7 @@ void Server::run(void) {
       } else if (curr_event->filter == EVFILT_WRITE) {  //write event
         if (_clients.count(curr_event->ident)){
           sendHttpResponse(curr_event->ident, curr_event->data);
-        } else if (curr_event->udata->getWritePipetoCgi() == curr_event->ident){
+        } else {
           sendCgiRequest(curr_event->ident, curr_event->udata, curr_event->data);
         }
       } else {

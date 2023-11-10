@@ -107,6 +107,28 @@ bool HttpRequest::isOnlySlash(std::string& s) {
   return true;
 }
 
+void HttpRequest::decode_location(void) {
+  std::string decoded_loc;
+  decoded_loc.reserve(_location.length());
+
+  for (std::size_t i = 0; i < _location.length(); ++i) {
+    if (_location[i] == '%' && i + 2 < _location.length()) {
+      std::stringstream ss;
+      std::string hex = _location.substr(i + 1, 2);
+      int value;
+      ss << std::hex << hex;
+      ss >> value;
+      decoded_loc += static_cast<char>(value);
+      i += 2;  // move to after %XX
+    } else if (_location[i] == '+') {
+      decoded_loc += ' ';
+    } else {
+      decoded_loc += _location[i];
+    }
+  }
+  _location = decoded_loc;
+}
+
 unsigned char HttpRequest::toLower(unsigned char c) { return tolower(c); }
 
 bool HttpRequest::parseUrl(
@@ -217,6 +239,8 @@ bool HttpRequest::saveRquestData(
       !(hd->_flag & HPS::kFlagChunked)) {
     return false;
   }
+
+  this->decode_location();
   return true;
 }
 

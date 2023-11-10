@@ -7,7 +7,7 @@ $upload_dir = "$current_dir/upload_files";
 
 $query = new CGI;
 
-$filename = $query->param("filename");
+$filename = CGI::param("filename");
 $filename =~ s/.*[\/\\](.*)/$1/;
 
 if ( -e "$upload_dir/$filename" )

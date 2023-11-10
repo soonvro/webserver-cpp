@@ -72,6 +72,7 @@ class HttpRequest {
 
     bool                                isStrCase(const char* lhs_start, unsigned int lhs_len, const char* rhs);
     bool                                isOnlySlash(std::string& s);
+    void                                decode_location(void);
 
     bool                                parseUrl(HttpDecoder* hd, const char *at, unsigned int len);
     bool                                recognizeHeaderField(HttpDecoder* hd, const char *at, unsigned int len);
