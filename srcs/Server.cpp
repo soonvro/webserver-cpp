@@ -397,6 +397,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
 }
 
 void Server::init(void) {
+  signal(SIGPIPE, SIG_IGN); 
   _kq = kqueue();
   if (_kq == -1) throw std::runtime_error("Error: kqueue fail.");
 
@@ -483,7 +484,7 @@ void Server::run(void) {
       } else if (curr_event->filter == EVFILT_WRITE) {  //write event
         if (_clients.count(curr_event->ident)){
           sendHttpResponse(curr_event->ident, curr_event->data);
-        } else {
+        } else if (curr_event->udata->getWritePipetoCgi() == curr_event->ident){
           sendCgiRequest(curr_event->ident, curr_event->udata, curr_event->data);
         }
       } else {
