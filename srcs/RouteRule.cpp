@@ -5,6 +5,7 @@ RouteRule::RouteRule()
     : _accepted_methods(0 | 1 << (HPS::kGET) | 1 << (HPS::kPOST | 1 << (HPS::kDELETE))),
       _redirection(std::make_pair(0, "")),
       _autoIndex(false),
+      _is_client_body_size_set(false),
       _max_client_body_size(0),
       _isCgi(false),
       _cgiPath("") {}
