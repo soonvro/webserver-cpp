@@ -6,10 +6,8 @@
 #include "Server.hpp"
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"
-#include "CgiResponse.hpp"
 
-
-#define DEBUGMOD 1
+#define DEBUGMOD 0
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
