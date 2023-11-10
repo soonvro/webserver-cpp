@@ -50,6 +50,7 @@ HttpRequest& HttpRequest::operator=(const HttpRequest& other){
   _is_content_length = other._is_content_length;
   _has_chunked_len = other._has_chunked_len;
   _pre_cr = other._pre_cr;
+  _entity.reserve(other._entity.capacity());
   _entity = other._entity;
   _header_arrived = other._header_arrived;
   _entity_arrived = other._entity_arrived;

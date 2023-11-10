@@ -28,6 +28,7 @@ CgiHandler::CgiHandler(const CgiHandler& other)
   _pipe_to_cgi_fd[PIPE_WRITE] = other._pipe_to_cgi_fd[PIPE_WRITE];
   _server_name = other._server_name;
   _port = other._port;
+  _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _client_fd = other._client_fd;
 }
@@ -42,6 +43,7 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   _pipe_to_cgi_fd[PIPE_WRITE] = other._pipe_to_cgi_fd[PIPE_WRITE];
   _server_name = other._server_name;
   _port = other._port;
+  _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _client_fd = other._client_fd;
   return *this;

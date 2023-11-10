@@ -206,7 +206,6 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         printReq(last_request, cli.getBuf(), true);
-        cli.popReqs();
         return ;
       }
       cli.addReadIdx(idx);

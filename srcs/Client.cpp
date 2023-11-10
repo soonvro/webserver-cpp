@@ -12,6 +12,7 @@ Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout
 Client& Client::operator=(const Client& other) {
   if (this == &other)
     return *this;
+  _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _read_idx = other._read_idx;
   _reqs = other._reqs;
