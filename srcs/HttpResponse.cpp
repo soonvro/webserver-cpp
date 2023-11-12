@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <cstring>
+#include <iterator>
 
 #include "HttpResponse.hpp"
 #include "Client.hpp"
@@ -69,6 +70,12 @@ void                                      HttpResponse::readDir(const std::strin
   closedir(dir);
 }
 
+void                                      HttpResponse::deleteFile(const std::string& path){
+  if (unlink(path.c_str()) != 0){
+    _status = 500;
+  }
+}
+
 
 bool                                      HttpResponse::isDir(const std::string& location){
   struct stat stat_buf;
@@ -97,8 +104,7 @@ void                                      HttpResponse::publish(const HttpReques
     try{
         if (!(rule->getAcceptedMethods() & (1 << _method))) {
           publishError(405, rule, _method);
-        }
-        else if (rule->getMaxClientBodySize() != 0 &&
+        } else if (rule->getMaxClientBodySize() != 0 &&
                 rule->getMaxClientBodySize() < req.getEntity().size()) {
           publishError(413, rule, _method);
         } else if (rule->getRedirection().first) {
@@ -109,22 +115,25 @@ void                                      HttpResponse::publish(const HttpReques
           addContentLength();
           return ;
         } else if (isDir(rule->getRoot() + suffix_of_location)) {
-          if (rule->getIndexPage().size() &&
-              (rule->getRoute() == location || rule->getRoute() + '/' == location)) {  // index page event
             _status = 200;
+          if (_method == HPS::kDELETE){
+            deleteFile(rule->getRoot() + suffix_of_location);
+          } else if (rule->getIndexPage().size() &&
+              (rule->getRoute() == location || rule->getRoute() + '/' == location)) {  // index page event
             if (_method != HPS::kHEAD)
               readFile(rule->getRoot() + "/" + rule->getIndexPage());
           } else if (rule->getAutoIndex() &&
                     (rule->getRoute() == location || rule->getRoute() + '/' == location)) {  // index page event
-            _status = 200;
             if (_method != HPS::kHEAD)
-                readDir(rule->getRoot() + suffix_of_location);
+              readDir(rule->getRoot() + suffix_of_location);
           } else{
             publishError(404, rule, _method);
           }
         }else{
           _status = 200;
-          if (_method != HPS::kHEAD)
+          if (_method == HPS::kDELETE){
+            deleteFile(rule->getRoot() + suffix_of_location);
+          } else if (_method != HPS::kHEAD)
             readFile(rule->getRoot() + suffix_of_location);
         }
     } catch (FileNotFoundException &e){
@@ -133,6 +142,47 @@ void                                      HttpResponse::publish(const HttpReques
       publishError(404, rule, _method);
     }
     addContentLength();
+}
+
+void                                      HttpResponse::publishCgi(const std::vector<char>::const_iterator& begin, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method){
+  std::string key;
+  std::string value;
+  std::vector<char>::const_iterator it = begin;
+  std::vector<char>::const_iterator start = begin;
+  while (start != end) {
+    if (*it == ':'){
+      key = std::string(start, it);
+      start = it + 1;
+    }else if (*it == '\n'){
+      if (*(start - 1) != ':' || *(start - 1) == '\n') { ++it; break ; }
+      if (*(it - 1) == '\r') value = std::string(start, it - 1);
+      else value = std::string(start, it);
+      setHeader(key, value);
+      start = it + 1;
+    }
+    ++it;
+  }
+  setBody(it, end);
+  _headers["Content-Type"] = "text/html";
+  _headers["Connection"] = "keep-alive";
+  if (_headers.find("Location") != _headers.end()){
+    const std::string& location = _headers.find("Location")->second;
+    if (location[0] == '/'){
+      _is_ready = false;
+      throw LocalReDirException();
+    }else{
+      _status = 302;
+      setStatusMessage("Found");
+    }
+  } else if (_headers.find("Content-type") != _headers.end() || _headers.find("Content-Type") != _headers.end()) {
+    _status = 200;
+    setStatusMessage("OK");
+  } else {
+    _status = 500;
+    publishError(500, &rule, method);
+  }
+  _is_ready = true;
+  addContentLength();
 }
 
 void                                      HttpResponse::publishError(int status, const RouteRule* rule, enum HPS::Method method){
