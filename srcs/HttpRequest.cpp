@@ -350,8 +350,12 @@ int HttpRequest::settingContent(std::vector<char>::const_iterator start, std::ve
     if (std::distance(start, end)) chunkedSetting(start, end);
     i = std::distance(it, start);
   } else {
-    if (_content_length && std::distance(start, end)) _entity.insert(_entity.end(), start, end);
+    int size = _content_length - _entity.size();
     i = std::distance(start, end);
+    if (i && size) {
+      if (i < size) size = i;
+      _entity.insert(_entity.end(), start, start + size);
+    }
     if (_entity.size() == _content_length)
       _entity_arrived = true;
   }
