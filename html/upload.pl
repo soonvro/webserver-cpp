@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 use CGI;
 use Cwd;
+use HTML::Entities;
+
 
 $current_dir = cwd;
 $upload_dir = "$current_dir/upload_files";
@@ -22,7 +24,8 @@ return $extension && $image_extensions{lc($extension)};
 
 if ( $filename && !(-e "$upload_dir/$filename") && (-s "$upload_dir/$filename" lt 104857600) )
 {
-open UPLOADFILE, ">$upload_dir/$filename";
+my $decode_filename = decode_entities($filename);
+open UPLOADFILE, ">$upload_dir/$decode_filename";
 
 while ( <$upload_filehandle> )
 {
