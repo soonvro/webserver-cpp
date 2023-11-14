@@ -397,7 +397,7 @@ void Server::run(void) {
         if (WEXITSTATUS(status) != 0) {
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
           res.publishError(503, 0, res.getMethod());
-            _clients[curr_event->ident].setEof(true);;          
+          _clients[curr_event->ident].setEof(true);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
       // socket disconnect event
@@ -415,7 +415,7 @@ void Server::run(void) {
             recvHttpRequest(curr_event->ident, curr_event->data);
           } catch (std::exception& e) {
             std::cout << e.what() << std::endl;
-            _clients[curr_event->ident].setEof(true);;          
+            _clients[curr_event->ident].setEof(true);
             HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
             res.publishError(502, 0, res.getMethod());
             changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
