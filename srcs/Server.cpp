@@ -8,7 +8,7 @@
 #include "HttpEncoder.hpp"
 
 #define DEBUGMOD 0
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
@@ -309,10 +309,14 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   int n = read(cgi_fd, buf, event_size);
   if (n > 0) cgi_handler.addBuf(buf, n);
   delete[] buf;
-  if (n < 0 || (n == 0 && cgi_handler.getBuf().empty()))  {
+  if (n < 0)  {
     res.publishError(503, &cgi_handler.getRouteRule(), res.getMethod());
     changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
     return ;
+  }
+  if (n == 0 && cgi_handler.getBuf().empty()) {
+    close(cgi_fd);
+    return;
   }
   if (n != 0)  return ;
 
@@ -393,6 +397,7 @@ void Server::run(void) {
         if (WEXITSTATUS(status) != 0) {
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
           res.publishError(503, 0, res.getMethod());
+            _clients[curr_event->ident].setEof(true);;          
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
       // socket disconnect event

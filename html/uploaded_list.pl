@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use CGI;
 use Cwd;
+use HTML::Entities;
 
 $current_dir = cwd;
 $upload_dir = "$current_dir/upload_files";
@@ -12,6 +13,7 @@ print <<END_HTML;
 <html>
 <head>
 <title>Uploaded Files List</title>
+<meta charset="UTF-8">
 <style>
 html { color-scheme: light dark; }
 body { width: 35em; margin: 0 auto;
@@ -39,7 +41,8 @@ while (<$upload_dir/*>)
 {
 my $filename = $_;
 $filename =~ s/.*[\/\\](.*)/$1/;
-print "<li><a href='/upload_files/$filename'>$filename</a></li>"
+$filename = decode_entities($filename);
+print "<li><a href='/file_info.pl?filename=$filename'>$filename</a></li>"
 }
 print <<END_HTML;
 </ul>
