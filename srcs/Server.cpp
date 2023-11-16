@@ -98,12 +98,19 @@ void Server::changeEvents(std::vector<struct kevent>& change_list,
 }
 
 void Server::handleErrorKevent(int fd) {
-  if (_server_sockets.find(fd) == _server_sockets.end()){
-    std::cout << "kqueue Error fd :" << fd << std::endl;
+  if (_clients.count(fd)){
+    std::cout << "Client socket kevent error fd :" << fd << std::endl;
+    disconnectClient(fd);
+  } else if (_server_sockets.count(fd)){
+    std::cout << "Server socket kevent error fd :" << fd << std::endl;
+  } else if (_cgi_responses_on_pipe.count(fd)){
+    std::cout << "Cgi read pipe kevent error fd :" << fd << std::endl;
+  } else if (_cgi_responses_on_pid.count(fd)){
+    std::cout << "Cgi process kevent error fd :" << fd << std::endl;
+  } else {
+    std::cout << "Kvent Error(Timer or Cgi write pipe) fd :" << fd << std::endl;
     return ;
   }
-  std::cout << "Client socket error" << std::endl;
-  disconnectClient(fd);
 }
 
 void Server::disconnectClient(const int client_fd) {
