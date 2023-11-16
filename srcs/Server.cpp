@@ -160,7 +160,12 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     if (idx == 0) {
       std::string encoded_response = HttpEncoder::execute(responses.front());
       const char* buf = encoded_response.c_str();
-      event_size -= write(client_fd, buf, std::strlen(buf));
+      int n = write(client_fd, buf, std::strlen(buf));
+      if (n < 0)  {
+        disconnectClient(client_fd);
+        return ;
+      }
+      event_size -= n;
     }
     int n = write(client_fd, &(responses.front().getBody())[idx],\
          (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
