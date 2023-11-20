@@ -195,7 +195,8 @@ void                                      HttpResponse::publishError(int status,
       _body.assign(body_str.begin(), body_str.end());
     }
     _headers["Content-Type"] = "text/html";
-    _headers["Connection"] = "keep-alive";
+    if (status != 408)  _headers["Connection"] = "keep-alive";
+    else _headers["Connection"] = "close";
     _is_ready = true;
     addContentLength();
     return ;

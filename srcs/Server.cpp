@@ -472,6 +472,13 @@ void      Server::checkTimeout(void){
     }
   }
 
-  for (size_t i = 0; i < disconnect_list.size(); i++)
-    disconnectClient(disconnect_list[i]);
+  for (size_t i = 0; i < disconnect_list.size(); i++){
+   int client_fd = disconnect_list[i];
+    _clients[client_fd].setEof(true);
+    // _clients[client_fd].getRess().clear();
+    HttpRequest& req = _clients[client_fd].addReqs().backRequest();
+    RouteRule rule   = RouteRule();
+    _clients[client_fd].addRess(req, rule).backRess().publishError(408, NULL, HPS::kHEAD);
+    changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  }
 }
