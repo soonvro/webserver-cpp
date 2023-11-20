@@ -1,16 +1,18 @@
 #!/usr/bin/perl 
 use CGI;
 use Cwd;
+use HTML::Entities;
 
 $current_dir = cwd;
 $upload_dir = "$current_dir/upload_files";
 
 $query = new CGI;
 
-$filename = CGI::param("filename");
+$filename = $query->param("filename");
 $filename =~ s/.*[\/\\](.*)/$1/;
+$filename = decode_entities($filename);
 
-if ( -e "$upload_dir/$filename" )
+if ( $filename && -e "$upload_dir/$filename" )
 {
 unlink "$upload_dir/$filename";
 
@@ -20,7 +22,9 @@ print <<END_HTML;
 <HTML>
 <HEAD>
 <TITLE>Deleted File : $filename</TITLE>
-<style>a { margin-top: 15px;text-decoration: none;
+<meta charset="UTF-8">
+<style>
+a { margin-top: 15px;text-decoration: none;
 color: white;border: 1px solid #276150;
 background-color: #397a86;padding: 10px 15px; border-radius: 5px;}
 </style>
@@ -49,6 +53,7 @@ print <<END_HTML;
 <HTML>
 <HEAD>
 <TITLE>File Not Found!</TITLE>
+<meta charset="UTF-8">
 <style>
 a {margin-top: 15px;text-decoration: none;
 color: black;padding: 10px 15px;border-radius: 5px;

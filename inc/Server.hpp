@@ -24,14 +24,6 @@
 #define EVENT_LIST_SIZE 512
 #define KEEPALIVETIMEOUT 600
 
-enum CgiType{
-  kDocument,
-  kLocalRedir,
-  kClientRedir,
-  kClientRedirDoc,
-  kError
-};
-
 class Server {
  private:
   Host                                        _default_host;

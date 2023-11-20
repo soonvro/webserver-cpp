@@ -84,6 +84,8 @@ class HttpResponse {
     bool                                      isDir(const std::string& location);
 
     void                                      publish(const HttpRequest& req, const RouteRule*, const Client& client);
+    void                                      publishCgi(const std::vector<char>::const_iterator& start, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method);
+
     void                                      publishError(int status, const RouteRule*, enum HPS::Method method);
     void                                      setHeader(const std::string& key, const std::string& value); 
 
@@ -92,10 +94,16 @@ class HttpResponse {
     int                                       cgiExecute(void) throw(std::runtime_error);
     
     void                                      readFile(const std::string& path);
+    void                                      deleteFile(const std::string& path);
 
     class FileNotFoundException : public std::exception {
       public: 
         const char* what() const throw() { return "File not found!"; }
+    };
+    
+    class LocalReDirException : public std::exception {
+      public: 
+        const char* what() const throw() { return "Local redirection request, Can't make response!"; }
     };
 };
 

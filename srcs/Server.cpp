@@ -8,7 +8,7 @@
 #include "HttpEncoder.hpp"
 
 #define DEBUGMOD 0
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
@@ -98,12 +98,19 @@ void Server::changeEvents(std::vector<struct kevent>& change_list,
 }
 
 void Server::handleErrorKevent(int fd) {
-  if (_server_sockets.find(fd) == _server_sockets.end()){
-    std::cout << "kqueue Error fd :" << fd << std::endl;
+  if (_clients.count(fd)){
+    std::cout << "Client socket kevent error fd :" << fd << std::endl;
+    disconnectClient(fd);
+  } else if (_server_sockets.count(fd)){
+    std::cout << "Server socket kevent error fd :" << fd << std::endl;
+  } else if (_cgi_responses_on_pipe.count(fd)){
+    std::cout << "Cgi read pipe kevent error fd :" << fd << std::endl;
+  } else if (_cgi_responses_on_pid.count(fd)){
+    std::cout << "Cgi process kevent error fd :" << fd << std::endl;
+  } else {
+    std::cout << "Kvent Error(Timer or Cgi write pipe) fd :" << fd << std::endl;
     return ;
   }
-  std::cout << "Client socket error" << std::endl;
-  disconnectClient(fd);
 }
 
 void Server::disconnectClient(const int client_fd) {
@@ -153,7 +160,12 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
     if (idx == 0) {
       std::string encoded_response = HttpEncoder::execute(responses.front());
       const char* buf = encoded_response.c_str();
-      event_size -= write(client_fd, buf, std::strlen(buf));
+      int n = write(client_fd, buf, std::strlen(buf));
+      if (n < 0)  {
+        disconnectClient(client_fd);
+        return ;
+      }
+      event_size -= n;
     }
     int n = write(client_fd, &(responses.front().getBody())[idx],\
          (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
@@ -301,6 +313,8 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
 
 void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   char    *buf = new char[event_size];
+  if (_cgi_responses_on_pipe.count(cgi_fd) == 0)  return ;
+  
   HttpResponse& res = *_cgi_responses_on_pipe[cgi_fd];
   CgiHandler& cgi_handler = res.getCgiHandler();
 
@@ -308,91 +322,30 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   if (n > 0) cgi_handler.addBuf(buf, n);
   delete[] buf;
   if (n < 0)  {
-    res.setIsReady(true);
-    res.publishError(503, 0, res.getMethod());
+    res.publishError(503, &cgi_handler.getRouteRule(), res.getMethod());
     changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
     return ;
+  }
+  if (n == 0 && cgi_handler.getBuf().empty()) {
+    close(cgi_fd);
+    return;
   }
   if (n != 0)  return ;
 
   cgi_handler.closeReadPipe();
-  if (n == 0 && cgi_handler.getBuf().size() == 0) return ;
-  res.setIsReady(true);
-  //enable write event
-  //delete cgi_handler from _cgi_handler
   _cgi_responses_on_pipe.erase(cgi_fd);
-
-  std::vector<char>::const_iterator it = cgi_handler.getBuf().begin();
-  std::string key;
-  std::string value;
-  std::vector<char>::const_iterator start = it;
-  while (it != cgi_handler.getBuf().end()) {
-    if (*it == ':'){
-      key = std::string(start, it);
-      start = it + 1;
-    }else if (*it == '\n'){
-      if (*(start - 1) != ':' || *(start - 1) == '\n') { ++it; break ; }
-      if (*(it - 1) == '\r') value = std::string(start, it - 1);
-      else value = std::string(start, it);
-      res.setHeader(key, value);
-      start = it + 1;
-    }
-    ++it;
-  }
-  res.setBody(it, cgi_handler.getBuf().end());
-  const std::map<std::string, std::string>& headers = res.getHeader();
-  int status;
-  CgiType cgi_type;
-  if (headers.find("Location") != headers.end()){
-    const std::string& location = headers.find("Location")->second;
-    if (location[0] == '/'){
-      status = 300;
-      cgi_type = kLocalRedir;
-    }else{
-      status = 302;
-      cgi_type = kClientRedir;
-    }
-  } else if (headers.find("Content-type") != headers.end() || headers.find("Content-Type") != headers.end()) {
-      status = 200;
-      cgi_type = kDocument;
-  } else {
-      status = 404;
-      cgi_type = kError;
-  }   
-  if (cgi_type == kClientRedir && res.getBody().size() > 0){
-    cgi_type = kClientRedirDoc;
-  }
-  res.setStatus(status);
-  if (cgi_type == kDocument){
-    res.setStatusMessage("OK");
-  } else if ( cgi_type == kClientRedirDoc || cgi_type == kClientRedir){
-    res.setStatusMessage("Found");
-  } else if (cgi_type == kLocalRedir){
-    res.setIsReady(false);
+  
+  try{
+    res.publishCgi(cgi_handler.getBuf().begin(), cgi_handler.getBuf().end(), cgi_handler.getRouteRule(), res.getMethod());
+  } catch (HttpResponse::LocalReDirException e){//local redir
     HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
     req.setQueries("");
-    req.setLocation(headers.find("Location")->second);
+    req.setLocation(res.getHeader().find("Location")->second);
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
-    setCgiSetting(res);
-    return ;
-  } else {
-    const RouteRule& rule = cgi_handler.getRouteRule();
-    if (rule.hasErrorPage(404)) {
-        try{
-          res.readFile(rule.getRoot() + "/" + rule.getErrorPage(404));
-        } catch (HttpResponse::FileNotFoundException &e){
-          std::cout << "configured error page not found" << std::endl;
-          std::cout << e.what() << std::endl;
-          res.publishError(404, 0, res.getMethod());
-        }
-    } else {
-      res.publishError(404,  0, res.getMethod());
-    }
+    setCgiSetting(res); 
   }
-  res.setHeader("Connection", "keep-alive");
-  res.addContentLength();
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
 
@@ -456,6 +409,7 @@ void Server::run(void) {
         if (WEXITSTATUS(status) != 0) {
           HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
           res.publishError(503, 0, res.getMethod());
+          _clients[curr_event->ident].setEof(true);
           changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         }
       // socket disconnect event
@@ -473,7 +427,7 @@ void Server::run(void) {
             recvHttpRequest(curr_event->ident, curr_event->data);
           } catch (std::exception& e) {
             std::cout << e.what() << std::endl;
-            _clients[curr_event->ident].setEof(true);;          
+            _clients[curr_event->ident].setEof(true);
             HttpResponse& res = *_cgi_responses_on_pid[curr_event->ident];
             res.publishError(502, 0, res.getMethod());
             changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
