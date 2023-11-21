@@ -157,6 +157,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
     int idx = responses.front().getEntityIdx();
+    
     if (idx == 0) {
       std::string encoded_response = HttpEncoder::execute(responses.front());
       const char* buf = encoded_response.c_str();
@@ -173,6 +174,9 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
       disconnectClient(client_fd);
       return ;
     }
+    
+    
+    
     idx += n;
     responses.front().setEntityIdx(idx);
     if ((size_t)idx != responses.front().getBody().size()) return ;
@@ -221,7 +225,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         idx = last_request.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(last_request, client_fd);
-        cli.addRess(last_request, *rule).backRess().publishError(411, rule, last_request.getMethod());
+        cli.addRess(last_request, rule).backRess().publishError(411, rule, last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         printReq(last_request, cli.getBuf(), true);
@@ -230,7 +234,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
       const RouteRule *rule = findRouteRule(last_request, client_fd);
-      cli.addRess(last_request, *rule).backRess().publish(last_request, rule, _clients[client_fd]);
+      cli.addRess(last_request, rule).backRess().publish(last_request, rule, _clients[client_fd]);
       if (cli.backRess().getIsCgi()){
         setCgiSetting(cli.backRess());
       }
@@ -258,7 +262,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(req, client_fd);
-        cli.addRess(req, *rule).backRess().publishError(411, rule, req.getMethod());
+        cli.addRess(req, rule).backRess().publishError(411, rule, req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         return ;
@@ -266,7 +270,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         const RouteRule *rule = findRouteRule(req, client_fd);
-        cli.addRess(req, *rule).backRess().publish(req, rule, _clients[client_fd]);
+        cli.addRess(req, rule).backRess().publish(req, rule, _clients[client_fd]);
         if (cli.backRess().getIsCgi()){
           setCgiSetting(cli.backRess());
         }
@@ -274,7 +278,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       }
     } else {
       const RouteRule *rule = findRouteRule(req, client_fd);
-      cli.addRess(req, *rule).backRess().publishError(400, rule, req.getMethod());
+      cli.addRess(req, rule).backRess().publishError(400, rule, req.getMethod());
       cli.setEof(true);
     }
   }
@@ -475,10 +479,8 @@ void      Server::checkTimeout(void){
   for (size_t i = 0; i < disconnect_list.size(); i++){
    int client_fd = disconnect_list[i];
     _clients[client_fd].setEof(true);
-    // _clients[client_fd].getRess().clear();
-    HttpRequest& req = _clients[client_fd].addReqs().backRequest();
-    RouteRule rule   = RouteRule();
-    _clients[client_fd].addRess(req, rule).backRess().publishError(408, NULL, HPS::kHEAD);
+    const HttpRequest& req = _clients[client_fd].addReqs().backRequest();
+    _clients[client_fd].addRess(req, 0).backRess().publishError(408, NULL, HPS::kHEAD);
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
   }
 }

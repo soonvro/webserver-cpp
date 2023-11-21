@@ -67,16 +67,6 @@ class HttpResponse {
     HPS::Method                               getMethod(void) const;
     const int&                                getEntityIdx(void) const;
 
-    void                                      setHttpMajor(unsigned short http_major);
-    void                                      setHttpMinor(unsigned short http_minor);
-    void                                      setStatus(unsigned short status);
-    void                                      setStatusMessage(const std::string& status_message);
-    void                                      setHeaders(const std::map<std::string, std::string>& headers);
-    void                                      setContentLength(unsigned long long content_length);
-    void                                      setIsChunked(bool is_chunked);
-    void                                      setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end);
-
-    void                                      setIsReady(bool is_ready);
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);
 
@@ -87,7 +77,6 @@ class HttpResponse {
     void                                      publishCgi(const std::vector<char>::const_iterator& start, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method);
 
     void                                      publishError(int status, const RouteRule*, enum HPS::Method method);
-    void                                      setHeader(const std::string& key, const std::string& value); 
 
     void                                      initializeCgiProcess(const HttpRequest& req, const RouteRule& rule, \
                                                   const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
