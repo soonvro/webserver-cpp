@@ -40,7 +40,10 @@ class HttpResponse {
     CgiHandler                                _cgi_handler;
 
     HPS::Method                               _method;
+    
     int                                       _entity_idx;
+    int                                       _header_idx;
+    bool                                      _is_header_sent;
 
     std::map<std::string, std::string>        _contentTypes;
 
@@ -66,9 +69,13 @@ class HttpResponse {
     CgiHandler&                               getCgiHandler(void);
     HPS::Method                               getMethod(void) const;
     const int&                                getEntityIdx(void) const;
+    const int&                                getHeaderIdx(void) const;
+    const bool&                               getIsHeaderSent(void) const;
 
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);
+    void                                      setHeaderIdx(int header_idx);
+    void                                      setIsHeaderSent(bool is_header_sent);
 
     void                                      addContentLength(void);
     bool                                      isDir(const std::string& location);

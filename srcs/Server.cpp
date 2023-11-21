@@ -156,30 +156,32 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   std::queue<HttpResponse>& responses = client.getRess();
   while (responses.size() > 0) {
     if (!responses.front().getIsReady()) break ;
-    int idx = responses.front().getEntityIdx();
-    
-    if (idx == 0) {
-      std::string encoded_response = HttpEncoder::execute(responses.front());
-      const char* buf = encoded_response.c_str();
-      int n = write(client_fd, buf, std::strlen(buf));
-      if (n < 0)  {
-        disconnectClient(client_fd);
-        return ;
-      }
-      event_size -= n;
+    const char* buf;
+    int         idx;
+    int         write_size;
+    if (responses.front().getIsHeaderSent()){
+      buf = &(responses.front().getBody())[0];
+      idx = responses.front().getEntityIdx();
+      write_size = (int)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx;
+    } else {
+      buf = HttpEncoder::execute(responses.front()).c_str();
+      idx = responses.front().getHeaderIdx();
+      write_size = (int)std::strlen(buf) - idx > event_size ? event_size : std::strlen(buf) - idx;
     }
-    int n = write(client_fd, &(responses.front().getBody())[idx],\
-         (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
-    if (n < 0)  {
+    int n = write(client_fd, &buf[idx], write_size);
+    if (n < 0){
       disconnectClient(client_fd);
       return ;
     }
-    
-    
-    
     idx += n;
-    responses.front().setEntityIdx(idx);
-    if ((size_t)idx != responses.front().getBody().size()) return ;
+    if (responses.front().getIsHeaderSent()){
+      responses.front().setEntityIdx(idx);
+      if (idx != (int)responses.front().getBody().size()) return ;
+    } else {
+      responses.front().setHeaderIdx(idx);
+      if (idx >= (int)std::strlen(buf)) responses.front().setIsHeaderSent(true);
+      return ;
+    }
     printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
     client.popRess();
     client.popReqs();

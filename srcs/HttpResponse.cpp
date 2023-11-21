@@ -11,7 +11,8 @@
 #include "Client.hpp"
 
 HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), _entity_idx(0) {
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), \
+  _entity_idx(0) ,_header_idx(0), _is_header_sent(false) {
     this->initContentTypes();
     _body.reserve(RESPONSE_BUF_SIZE);
   }
@@ -257,7 +258,10 @@ const int&                                HttpResponse::getCgiPipeIn(void) const
 CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
 HPS::Method                               HttpResponse::getMethod(void) const { return _method; }
 const int&                                HttpResponse::getEntityIdx(void) const { return _entity_idx; };
-
+const int&                                HttpResponse::getHeaderIdx(void) const { return _header_idx; }
+const bool&                               HttpResponse::getIsHeaderSent(void) const { return _is_header_sent; }
 // Setters
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setEntityIdx(int entity_idx) { _entity_idx = entity_idx; }
+void                                      HttpResponse::setHeaderIdx(int header_idx) { _header_idx = header_idx; }
+void                                      HttpResponse::setIsHeaderSent(bool is_header_sent) { _is_header_sent = is_header_sent; }
