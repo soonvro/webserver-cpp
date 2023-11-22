@@ -315,6 +315,9 @@ enum HPS::DecoderState HttpDecoder::checkMethod(void) {
   HPS_MATCH_METHOD(HEAD);
   HPS_MATCH_METHOD(POST);
   HPS_MATCH_METHOD(DELETE);
+  if (!std::isupper(_c)) return HPS::kDead;  // method must be upper case
+  while (std::isupper(_c)) this->readNBytes(1);
+  if (_c == ' ') return HPS::kMethodEnd;
   return HPS::kDead;
 }
 
