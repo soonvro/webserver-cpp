@@ -315,7 +315,7 @@ void  Server::sendCgiRequest(int cgi_fd, void* handler, int64_t event_size){
 
 void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   char    *buf = new char[event_size];
-  if (_cgi_responses_on_pipe.count(cgi_fd) == 0)  return ;
+  if (_cgi_responses_on_pipe.count(cgi_fd) == 0)  { delete[] buf; return ;}
   
   HttpResponse& res = *_cgi_responses_on_pipe[cgi_fd];
   CgiHandler& cgi_handler = res.getCgiHandler();
