@@ -154,36 +154,38 @@ void Server::connectClient(int server_socket) {
 void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   Client& client = _clients[client_fd];
   std::queue<HttpResponse>& responses = client.getRess();
-  while (responses.size() > 0) {
-    if (!responses.front().getIsReady()) break ;
-    int idx = responses.front().getEntityIdx();
-    if (idx == 0) {
-      std::string encoded_response = HttpEncoder::execute(responses.front());
-      const char* buf = encoded_response.c_str();
-      int n = write(client_fd, buf, std::strlen(buf));
-      if (n < 0)  {
-        disconnectClient(client_fd);
-        return ;
-      }
-      event_size -= n;
-    }
-    int n = write(client_fd, &(responses.front().getBody())[idx],\
-         (int64_t)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx);
-    if (n < 0)  {
-      disconnectClient(client_fd);
-      return ;
-    }
-    idx += n;
-    responses.front().setEntityIdx(idx);
-    if ((size_t)idx != responses.front().getBody().size()) return ;
-    printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
-    client.popRess();
-    client.popReqs();
-    std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
+  const char* buf;
+  int         idx;
+  int         write_size;
+  if (responses.front().getIsHeaderSent()){
+    buf = &(responses.front().getBody())[0];
+    idx = responses.front().getEntityIdx();
+    write_size = (int)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx;
+  } else {
+    buf = HttpEncoder::execute(responses.front()).c_str();
+    idx = responses.front().getHeaderIdx();
+    write_size = (int)std::strlen(buf) - idx > event_size ? event_size : std::strlen(buf) - idx;
   }
+  int n = write(client_fd, &buf[idx], write_size);
+  if (n < 0){
+    disconnectClient(client_fd);
+    return ;
+  }
+  idx += n;
+  if (responses.front().getIsHeaderSent()){
+    responses.front().setEntityIdx(idx);
+    if (idx != (int)responses.front().getBody().size()) return ;
+  } else {
+    responses.front().setHeaderIdx(idx);
+    if (idx >= (int)std::strlen(buf)) responses.front().setIsHeaderSent(true);
+    return ;
+  }
+  printRes(HttpEncoder::execute(responses.front()), &(responses.front().getBody())[0], responses.front().getContentLength());
+  client.popRess();
+  client.popReqs();
+  std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
   if (client.getEof()) disconnectClient(client_fd);
-  else  changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0,
-                  NULL);
+  if (responses.empty() || !responses.front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
 }
 
 void  Server::setCgiSetting(HttpResponse& res){
@@ -221,7 +223,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         idx = last_request.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(last_request, client_fd);
-        cli.addRess(last_request, *rule).backRess().publishError(411, rule, last_request.getMethod());
+        cli.addRess(last_request, rule).backRess().publishError(411, rule, last_request.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         printReq(last_request, cli.getBuf(), true);
@@ -230,7 +232,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       cli.addReadIdx(idx);
       if (!last_request.getEntityArrived()) return ;
       const RouteRule *rule = findRouteRule(last_request, client_fd);
-      cli.addRess(last_request, *rule).backRess().publish(last_request, rule, _clients[client_fd]);
+      cli.addRess(last_request, rule).backRess().publish(last_request, rule, _clients[client_fd]);
       if (cli.backRess().getIsCgi()){
         setCgiSetting(cli.backRess());
       }
@@ -258,7 +260,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(req, client_fd);
-        cli.addRess(req, *rule).backRess().publishError(411, rule, req.getMethod());
+        cli.addRess(req, rule).backRess().publishError(411, rule, req.getMethod());
         changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
         cli.setEof(true);
         return ;
@@ -266,7 +268,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       cli.addReadIdx(idx);
       if (req.getEntityArrived()) {
         const RouteRule *rule = findRouteRule(req, client_fd);
-        cli.addRess(req, *rule).backRess().publish(req, rule, _clients[client_fd]);
+        cli.addRess(req, rule).backRess().publish(req, rule, _clients[client_fd]);
         if (cli.backRess().getIsCgi()){
           setCgiSetting(cli.backRess());
         }
@@ -274,7 +276,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       }
     } else {
       const RouteRule *rule = findRouteRule(req, client_fd);
-      cli.addRess(req, *rule).backRess().publishError(400, rule, req.getMethod());
+      cli.addRess(req, rule).backRess().publishError(400, rule, req.getMethod());
       cli.setEof(true);
     }
   }
@@ -340,7 +342,7 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
   } catch (HttpResponse::LocalReDirException e){//local redir
     HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
-    req.setQueries("");
+    req.setQueries(""); 
     req.setLocation(res.getHeader().find("Location")->second);
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
@@ -475,10 +477,8 @@ void      Server::checkTimeout(void){
   for (size_t i = 0; i < disconnect_list.size(); i++){
    int client_fd = disconnect_list[i];
     _clients[client_fd].setEof(true);
-    // _clients[client_fd].getRess().clear();
-    HttpRequest& req = _clients[client_fd].addReqs().backRequest();
-    RouteRule rule   = RouteRule();
-    _clients[client_fd].addRess(req, rule).backRess().publishError(408, NULL, HPS::kHEAD);
+    const HttpRequest& req = _clients[client_fd].addReqs().backRequest();
+    _clients[client_fd].addRess(req, 0).backRess().publishError(408, NULL, HPS::kHEAD);
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
   }
 }

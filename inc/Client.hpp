@@ -50,7 +50,7 @@ class Client {
     void                                addBuf(const char* buf, size_t size);
     void                                addReadIdx(size_t idx);
     Client&                             addReqs(void);
-    Client&                             addRess(const HttpRequest& req, const RouteRule& route_rule);
+    Client&                             addRess(const HttpRequest& req, const RouteRule* route_rule);
 
 
     void                                eraseBuf(void);

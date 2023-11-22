@@ -11,7 +11,8 @@
 #include "Client.hpp"
 
 HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) : _http_major(1), _http_minor(1), _status(0), \
-  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), _entity_idx(0) {
+  _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), \
+  _entity_idx(0) ,_header_idx(0), _is_header_sent(false) {
     this->initContentTypes();
     _body.reserve(RESPONSE_BUF_SIZE);
   }
@@ -147,22 +148,37 @@ void                                      HttpResponse::publish(const HttpReques
 void                                      HttpResponse::publishCgi(const std::vector<char>::const_iterator& begin, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method){
   std::string key;
   std::string value;
+
   std::vector<char>::const_iterator it = begin;
   std::vector<char>::const_iterator start = begin;
-  while (start != end) {
-    if (*it == ':'){
+  
+  bool  is_key = true;
+  while (it != end) {
+    if (is_key && *it == ':'){
       key = std::string(start, it);
       start = it + 1;
-    }else if (*it == '\n'){
-      if (*(start - 1) != ':' || *(start - 1) == '\n') { ++it; break ; }
-      if (*(it - 1) == '\r') value = std::string(start, it - 1);
-      else value = std::string(start, it);
-      setHeader(key, value);
+      is_key = false;
+    } else if (!is_key && *it == '\n') {
+      //[char] \r\n\r\n
+      //[char] \n\n
+      if (end - it >= 2 && it - begin >= 1 && *(it - 1) == '\r' && *(it + 1) == '\r' && *(it + 2) == '\n') { it += 3; break ; }
+      if (end - it >= 1 && *(it + 1) == '\n') { it += 2; break ; }
+      //[char] \r\n
+      //[char] \n
+      if (it - begin >= 1 && *(it - 1) == '\r') { 
+        value = std::string(start, it - 1);
+      }else{  
+        value = std::string(start, it);
+      }
+      _headers[key] = value;
       start = it + 1;
-    }
+      is_key = true;
+    } 
     ++it;
+    if (it == end) _headers.clear();
   }
-  setBody(it, end);
+  _body.insert(_body.end(), it, end);
+
   _headers["Content-Type"] = "text/html";
   _headers["Connection"] = "keep-alive";
   if (_headers.find("Location") != _headers.end()){
@@ -172,11 +188,11 @@ void                                      HttpResponse::publishCgi(const std::ve
       throw LocalReDirException();
     }else{
       _status = 302;
-      setStatusMessage("Found");
+      _status_message = "Found";
     }
   } else if (_headers.find("Content-type") != _headers.end() || _headers.find("Content-Type") != _headers.end()) {
     _status = 200;
-    setStatusMessage("OK");
+    _status_message = "OK";
   } else {
     _status = 500;
     publishError(500, &rule, method);
@@ -242,17 +258,10 @@ const int&                                HttpResponse::getCgiPipeIn(void) const
 CgiHandler&                               HttpResponse::getCgiHandler() { return _cgi_handler; }
 HPS::Method                               HttpResponse::getMethod(void) const { return _method; }
 const int&                                HttpResponse::getEntityIdx(void) const { return _entity_idx; };
-
+const int&                                HttpResponse::getHeaderIdx(void) const { return _header_idx; }
+const bool&                               HttpResponse::getIsHeaderSent(void) const { return _is_header_sent; }
 // Setters
-void                                      HttpResponse::setHttpMajor(unsigned short http_major) { _http_major = http_major; }
-void                                      HttpResponse::setHttpMinor(unsigned short http_minor) { _http_minor = http_minor; }
-void                                      HttpResponse::setStatus(unsigned short status) { _status = status; }
-void                                      HttpResponse::setStatusMessage(const std::string& status_message) { _status_message = status_message; }
-void                                      HttpResponse::setHeaders(const std::map<std::string, std::string>& headers) { _headers = headers; }
-void                                      HttpResponse::setContentLength(unsigned long long content_length) { _content_length = content_length; }
-void                                      HttpResponse::setIsChunked(bool is_chunked) { _is_chunked = is_chunked; }
-void                                      HttpResponse::setBody(const std::vector<char>::const_iterator& it_begin, const std::vector<char>::const_iterator& it_end) { _body.insert(_body.end(), it_begin, it_end); }
-void                                      HttpResponse::setIsReady(bool is_ready) { _is_ready = is_ready; }
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
-void                                      HttpResponse::setHeader(const std::string& key, const std::string& value){ _headers[key] = value; }
 void                                      HttpResponse::setEntityIdx(int entity_idx) { _entity_idx = entity_idx; }
+void                                      HttpResponse::setHeaderIdx(int header_idx) { _header_idx = header_idx; }
+void                                      HttpResponse::setIsHeaderSent(bool is_header_sent) { _is_header_sent = is_header_sent; }
