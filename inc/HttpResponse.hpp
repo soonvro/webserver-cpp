@@ -12,6 +12,7 @@
 #include "RouteRule.hpp"
 #include "CgiHandler.hpp"
 #include "HttpDecoderEnums.h"
+#include "SessionBlock.hpp"
 
 #define RESPONSE_BUF_SIZE 134217728
 
@@ -47,6 +48,9 @@ class HttpResponse {
 
     std::map<std::string, std::string>        _contentTypes;
 
+    bool                                      _is_session_block;
+    SessionBlock                              _session_block;
+
     void                                      readDir(const std::string& path);
 
   public:
@@ -71,6 +75,8 @@ class HttpResponse {
     const int&                                getEntityIdx(void) const;
     const int&                                getHeaderIdx(void) const;
     const bool&                               getIsHeaderSent(void) const;
+    const SessionBlock&                       getSessionBlock(void) const;
+    const bool&                               getIsSessionBlock(void) const;
 
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);
@@ -87,7 +93,7 @@ class HttpResponse {
 
     void                                      initializeCgiProcess(const HttpRequest& req, const RouteRule& rule, \
                                                   const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error);
-    int                                       cgiExecute(void) throw(std::runtime_error);
+    int                                       cgiExecute(const std::string& username) throw(std::runtime_error);
     
     void                                      readFile(const std::string& path);
     void                                      deleteFile(const std::string& path);

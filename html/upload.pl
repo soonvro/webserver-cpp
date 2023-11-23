@@ -45,7 +45,7 @@ background-color: #397a86;padding: 10px 15px; border-radius: 5px;}
 <div style="padding: 10px;border: 2px solid lightblue;border-radius: 10px;">
 <a href="/file_info.pl?filename=$filename">Check to $filename</a>
 </div>
-<a id="bh" href="/index.html">Back to Home</a>
+<a id="bh" href="/index.pl">Back to Home</a>
 </BODY>
 </HTML>
 
@@ -81,7 +81,7 @@ a:hover {color: skyblue;}
 </style>
 </HEAD>
 <BODY style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
-<a href="/index.html">< Back to Home</a>
+<a href="/index.pl">< Back to Home</a>
 <h1><span style="color: cornflowerblue;">Oops ! Something was wrong.</span></h1>
 <P>$message</P>
 </BODY>

@@ -67,7 +67,7 @@ void CgiHandler::setPipe(void) throw(std::runtime_error) {
 
 }
 
-void CgiHandler::setupCgiEnvp(void) {
+void CgiHandler::setupCgiEnvp(const std::string& username) {
   static const char* methods[] = {GET, HEAD, POST, DELETE};
   std::stringstream ss;
 
@@ -87,7 +87,9 @@ void CgiHandler::setupCgiEnvp(void) {
   setenv("QUERY_STRING", _req.getQueries().c_str(), 1);
   setenv("SCRIPT_NAME", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
   setenv("PATH_INFO", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
-  
+
+  if (username.size() > 0) setenv("username", username.c_str(), 1);
+
   char current_dir[512];
   getcwd(current_dir, 512);
   std::string slash = "/";
@@ -101,7 +103,7 @@ void CgiHandler::setupCgiEnvp(void) {
   if (!_req.getHeaderValue("x-secret-header-for-test").empty())
     setenv("HTTP_X_SECRET_HEADER_FOR_TEST", _req.getHeaderValue("x-secret-header-for-test").c_str(), 1);
 }
-int CgiHandler::execute(void) throw(std::runtime_error) {
+int CgiHandler::execute(const std::string& username) throw(std::runtime_error) {
   pid_t pid = fork();
   if (pid == -1) throw std::runtime_error("error: fork error!");
   if (pid == 0) {  // Child process
@@ -113,7 +115,7 @@ int CgiHandler::execute(void) throw(std::runtime_error) {
       dup2(_pipe_to_cgi_fd[PIPE_READ], STDIN_FILENO);
       close(_pipe_to_cgi_fd[PIPE_READ]);
 
-      this->setupCgiEnvp();
+      this->setupCgiEnvp(username);
       char* path        = strdup(_route_rule.getCgiPath().c_str());
       char* script_name = strdup((_route_rule.getRoot() + _req.getLocation()).c_str());
       char* argv[3] = {path, script_name, NULL};

@@ -35,7 +35,7 @@ background-color: #397a86;padding: 10px 15px; border-radius: 5px;}
 <P>I deleted the file!</P>
 </div>
 
-<a href="/index.html">Back to Home</a>
+<a href="/index.pl">Back to Home</a>
 </BODY>
 </HTML>
 
@@ -63,7 +63,7 @@ a:hover {color: skyblue;}
 </HEAD>
 
 <BODY style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
-<a href="/index.html">< Back to Home</a>
+<a href="/index.pl">< Back to Home</a>
 <h1><span style="color: cornflowerblue;">does not exist \"$filename\"</span></h1>
 <P>$filname does not exist..</P>
 </div>

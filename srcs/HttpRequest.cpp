@@ -76,6 +76,7 @@ const std::string                         HttpRequest::getHeaderValue(std::strin
     return iter->second;
   return std::string();
 }
+const std::string&                        HttpRequest::getSessionId(void) const { return _session_id; }
 
 // Setters
 void HttpRequest::setQueries(const std::string& queries) { _queries = queries; }
@@ -360,4 +361,33 @@ int HttpRequest::settingContent(std::vector<char>::const_iterator start, std::ve
       _entity_arrived = true;
   }
   return i;
+}
+
+void  HttpRequest::setSessionId(void) {
+  std::map<std::string, std::string>::iterator it = _headers.find("cookie");
+  if (it == _headers.end()) return ;
+  const std::string&  cookie_value = it->second;
+
+  std::string::size_type  start_pos = 0;
+  std::string::size_type  end_pos = 0;
+
+  while ((end_pos = cookie_value.find(";", start_pos)) != std::string::npos) {
+      while (cookie_value.at(start_pos) == ' ') ++start_pos;
+
+      if (11 < cookie_value.size() - start_pos && cookie_value.compare(start_pos, 11, "session_id=") == 0) {
+        _session_id.clear();
+        _session_id.insert(_session_id.end(), cookie_value.begin() + start_pos + 11, cookie_value.begin() + end_pos);
+        return ;
+      }
+      start_pos = end_pos + 1;
+  }
+
+  if (start_pos < cookie_value.size()) {
+    while (cookie_value.at(start_pos) == ' ') ++start_pos;
+
+    if (11 < cookie_value.size() - start_pos && cookie_value.compare(start_pos, 11, "session_id=") == 0) {
+      _session_id.clear();
+      _session_id.insert(_session_id.end(), cookie_value.begin() + start_pos + 11, cookie_value.end());
+    }
+  }
 }
