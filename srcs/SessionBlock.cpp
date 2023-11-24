@@ -31,4 +31,4 @@ const long&         SessionBlock::getExpires(void) const { return _expires; }
 void                SessionBlock::setId(const std::string& id) { _id = id; }
 
 void                SessionBlock::setValue(const std::string& value) { _value = value; }
-void                SessionBlock::renewExp(void) { _expires = static_cast<long>(clock()) / CLOCKS_PER_SEC; }
+void                SessionBlock::renewExp(void) { _expires = getTime(); }

@@ -24,6 +24,7 @@
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
 #define KEEPALIVETIMEOUT 60
+#define SESSIONTIMELIMIT 1200
 
 class Server {
  private:

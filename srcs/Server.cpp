@@ -256,6 +256,11 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
     hd.setDataSpace(static_cast<void*>(&req));
     if (hd.execute(&(data)[0], size) == size) {
       req.setSessionId();
+      if (isJoinedSession(req.getSessionId())) {
+        SessionBlock& sb = _session_blocks[req.getSessionId()];
+
+        sb.renewExp();
+      }
       printReq(req, data, false);
       try{
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
@@ -475,21 +480,30 @@ time_t Server::getTime(void) {
 }
 
 void      Server::checkTimeout(void){
-  std::vector<int> disconnect_list;
+  std::vector<int>          disconnect_list;
+  std::vector<std::string>  session_keys;
 
   std::map<int, Client>::iterator it = _clients.begin();
-  for (; it != _clients.end(); it++) {
+  for (; it != _clients.end(); ++it) {
     if (getTime() - it->second.getLastRequestTime() > it->second.getTimeoutInterval()) {
       disconnect_list.push_back(it->first);
     }
   }
 
-  for (size_t i = 0; i < disconnect_list.size(); i++){
+  for (size_t i = 0; i < disconnect_list.size(); ++i){
    int client_fd = disconnect_list[i];
     _clients[client_fd].setEof(true);
     const HttpRequest& req = _clients[client_fd].addReqs().backRequest();
     _clients[client_fd].addRess(req, 0).backRess().publishError(408, NULL, HPS::kHEAD);
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
+  }
+
+  for (std::map<std::string, SessionBlock>::iterator it = _session_blocks.begin(); it != _session_blocks.end(); ++it) {
+    SessionBlock& sb = it->second;
+    if (getTime() - sb.getExpires() > SESSIONTIMELIMIT) session_keys.push_back(it->first);
+  }
+  for (size_t i = 0; i < session_keys.size(); ++i) {
+    _session_blocks.erase(session_keys[i]);
   }
 }
 
