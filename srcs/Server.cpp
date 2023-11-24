@@ -185,7 +185,7 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   client.popReqs();
   std::cout << "response sent: client fd : " << client_fd << " bytes: " << n << std::endl;
   if (client.getEof()) disconnectClient(client_fd);
-  if (responses.empty() || !responses.front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
+  else if (responses.empty() || !responses.front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
 }
 
 void  Server::setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
