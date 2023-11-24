@@ -19,10 +19,12 @@
 #include "Client.hpp"
 #include "Host.hpp"
 #include "CgiHandler.hpp"
+#include "SessionBlock.hpp"
 
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
 #define KEEPALIVETIMEOUT 60
+#define SESSIONTIMELIMIT 1200
 
 class Server {
  private:
@@ -34,6 +36,7 @@ class Server {
 
   int                                         _kq;
   std::vector<struct kevent>                  _change_list;
+  std::map<std::string, SessionBlock>         _session_blocks;
 
   std::map<int, Client>                       _clients;  // <socket_fd, Client>
   std::map<int, HttpResponse*>                _cgi_responses_on_pipe;  //<pipe_in_fd, pointer to response>
@@ -54,13 +57,12 @@ class Server {
 
   void              sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
   void              recvCgiResponse(int cgi_fd, int64_t event_size);
-  void              setCgiSetting(HttpResponse& res); 
+  void              setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session); 
 
   const RouteRule*  findRouteRule(const HttpRequest& req, const int& client_fd);
 
   time_t            getTime(void);  //return seconds
   void              checkTimeout(void);
-
 
  public:
   Server(const char *configure_file);
@@ -68,6 +70,9 @@ class Server {
 
   void init(void);
   void run(void);
+
+  bool                                                      isJoinedSession(const std::string& session_id);
+  const std::map<std::string, SessionBlock>::const_iterator getSessionBlock(const std::string& session_id);
 };
 
 #endif

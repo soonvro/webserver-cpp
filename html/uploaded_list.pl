@@ -33,7 +33,7 @@ a#back:hover {color: skyblue;}
 </style>
 </head>
 <body>
-<a id="back" href="/index.html">< Back to Home</a>
+<a id="back" href="/index.pl">< Back to Home</a>
 <h1>Uploaded Files List</h1>
 <ul>
 END_HTML

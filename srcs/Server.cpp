@@ -188,12 +188,12 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   if (responses.empty() || !responses.front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
 }
 
-void  Server::setCgiSetting(HttpResponse& res){
+void  Server::setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
   _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   changeEvents(_change_list, res.getCgiHandler().getWritePipetoCgi(),
               EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &(res.getCgiHandler()));
-  int cgi_pid = res.cgiExecute();
+  int cgi_pid = res.cgiExecute(sbi, is_joined_session);
   _cgi_responses_on_pid[cgi_pid] = &res;
   changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
   std::cout << "create cgi process, pid: " << cgi_pid  << ", pipe_fd: " << res.getCgiPipeIn() << std::endl;
@@ -233,8 +233,8 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       if (!last_request.getEntityArrived()) return ;
       const RouteRule *rule = findRouteRule(last_request, client_fd);
       cli.addRess(last_request, rule).backRess().publish(last_request, rule, _clients[client_fd]);
-      if (cli.backRess().getIsCgi()){
-        setCgiSetting(cli.backRess());
+      if (cli.backRess().getIsCgi()) {
+        setCgiSetting(cli.backRess(), getSessionBlock(last_request.getSessionId()), isJoinedSession(last_request.getSessionId()));
       }
       printReq(last_request, cli.getBuf(), false);
       cli.eraseBuf();
@@ -255,6 +255,12 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         NULL, NULL);
     hd.setDataSpace(static_cast<void*>(&req));
     if (hd.execute(&(data)[0], size) == size) {
+      req.setSessionId();
+      if (isJoinedSession(req.getSessionId())) {
+        SessionBlock& sb = _session_blocks[req.getSessionId()];
+
+        sb.renewExp();
+      }
       printReq(req, data, false);
       try{
         idx = req.settingContent(cli.getReadIter(), cli.getEndIter());
@@ -269,8 +275,8 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       if (req.getEntityArrived()) {
         const RouteRule *rule = findRouteRule(req, client_fd);
         cli.addRess(req, rule).backRess().publish(req, rule, _clients[client_fd]);
-        if (cli.backRess().getIsCgi()){
-          setCgiSetting(cli.backRess());
+        if (cli.backRess().getIsCgi()) {
+          setCgiSetting(cli.backRess(), getSessionBlock(req.getSessionId()), isJoinedSession(req.getSessionId()));
         }
         cli.eraseBuf();
       }
@@ -336,17 +342,26 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
 
   cgi_handler.closeReadPipe();
   _cgi_responses_on_pipe.erase(cgi_fd);
-  
+
   try{
     res.publishCgi(cgi_handler.getBuf().begin(), cgi_handler.getBuf().end(), cgi_handler.getRouteRule(), res.getMethod());
+
+    if (res.getIsSessionBlock()) {
+      const SessionBlock& sb = res.getSessionBlock();
+      _session_blocks[sb.getId()] = sb;
+    } else if (res.getIsLogoutRequest() && isJoinedSession(res.getSessionBlock().getId())) {
+      _session_blocks.erase(res.getSessionBlock().getId());
+    }
   } catch (HttpResponse::LocalReDirException e){//local redir
+    std::cout << "!!!!!!" << e.what() << std::endl;
     HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
-    req.setQueries(""); 
+    req.setSessionId();
+    req.setQueries("");
     req.setLocation(res.getHeader().find("Location")->second);
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
-    setCgiSetting(res); 
+    setCgiSetting(cli.backRess(), getSessionBlock(req.getSessionId()), isJoinedSession(req.getSessionId()));
   }
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
@@ -465,20 +480,32 @@ time_t Server::getTime(void) {
 }
 
 void      Server::checkTimeout(void){
-  std::vector<int> disconnect_list;
+  std::vector<int>          disconnect_list;
+  std::vector<std::string>  session_keys;
 
   std::map<int, Client>::iterator it = _clients.begin();
-  for (; it != _clients.end(); it++) {
+  for (; it != _clients.end(); ++it) {
     if (getTime() - it->second.getLastRequestTime() > it->second.getTimeoutInterval()) {
       disconnect_list.push_back(it->first);
     }
   }
 
-  for (size_t i = 0; i < disconnect_list.size(); i++){
+  for (size_t i = 0; i < disconnect_list.size(); ++i){
    int client_fd = disconnect_list[i];
     _clients[client_fd].setEof(true);
     const HttpRequest& req = _clients[client_fd].addReqs().backRequest();
     _clients[client_fd].addRess(req, 0).backRess().publishError(408, NULL, HPS::kHEAD);
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
   }
+
+  for (std::map<std::string, SessionBlock>::iterator it = _session_blocks.begin(); it != _session_blocks.end(); ++it) {
+    SessionBlock& sb = it->second;
+    if (getTime() - sb.getExpires() > SESSIONTIMELIMIT) session_keys.push_back(it->first);
+  }
+  for (size_t i = 0; i < session_keys.size(); ++i) {
+    _session_blocks.erase(session_keys[i]);
+  }
 }
+
+bool                                                       Server::isJoinedSession(const std::string& session_id) { return _session_blocks.find(session_id) != _session_blocks.end(); }
+const std::map<std::string, SessionBlock>::const_iterator  Server::getSessionBlock(const std::string& session_id) { return _session_blocks.find(session_id); }

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Welcome to Webserv!</title>
+<title>Please give your name !</title>
 <style>
 html { color-scheme: light dark; }
 body { width: 35em; margin: 0 auto;
@@ -16,28 +16,14 @@ a { text-decoration: none; color: inherit; }
 </style>
 </head>
 <body>
-<h1>Welcome to Webserv!</h1>
-<p>What to do ?</p>
+<h1>Please give your name !</h1>
+<p>We should know who you are.</p>
 <main>
 <div class="item">
-<a href="/upload_pl.html">
-<small>file upload is availuable</small>
-<div>File upload Using Perl</div>
-</a>
-</div>
-
-<div class="item">
-<a href="/delete_pl.html">
-<small>file delete is availuable</small>
-<div>Using Perl</div>
-</a>
-</div>
-
-<div class="item">
-<a href="/uploaded_list.pl">
-<small>uploaded files list</small>
-<div>file uploaded list</div>
-</a>
+<form action="/login.pl" method="post">
+<input name="username" type="text" placeholder="text your name" />
+<input type="submit" value="submit" />
+</form>
 </div>
 </main>
 <div id="message">Thank you for using Webserv.</div>

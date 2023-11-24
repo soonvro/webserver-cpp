@@ -12,7 +12,7 @@
 
 HttpResponse::HttpResponse(const HttpRequest& req, const RouteRule& route_rule) : _http_major(1), _http_minor(1), _status(0), \
   _content_length(0), _is_chunked(false), _is_ready(false) , _is_cgi(false), _cgi_handler(req, route_rule), _method(HPS::kHEAD), \
-  _entity_idx(0) ,_header_idx(0), _is_header_sent(false) {
+  _entity_idx(0) ,_header_idx(0), _is_header_sent(false), _is_session_block(false), _is_logout_req(false) {
     this->initContentTypes();
     _body.reserve(RESPONSE_BUF_SIZE);
   }
@@ -145,44 +145,62 @@ void                                      HttpResponse::publish(const HttpReques
     addContentLength();
 }
 
-void                                      HttpResponse::publishCgi(const std::vector<char>::const_iterator& begin, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method){
+void                                      HttpResponse::publishCgi(const std::vector<char>::const_iterator& begin, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method) {
   std::string key;
   std::string value;
 
   std::vector<char>::const_iterator it = begin;
   std::vector<char>::const_iterator start = begin;
-  
+  _headers.clear();
+  _headers["Content-Type"] = "text/html";
+  _headers["Connection"] = "keep-alive";
+
   bool  is_key = true;
-  while (it != end) {
+  while (it < end) {
     if (is_key && *it == ':'){
+      while (start != it && *start == ' ') ++start;
       key = std::string(start, it);
       start = it + 1;
       is_key = false;
     } else if (!is_key && *it == '\n') {
-      //[char] \r\n\r\n
-      //[char] \n\n
-      if (end - it >= 2 && it - begin >= 1 && *(it - 1) == '\r' && *(it + 1) == '\r' && *(it + 2) == '\n') { it += 3; break ; }
-      if (end - it >= 1 && *(it + 1) == '\n') { it += 2; break ; }
       //[char] \r\n
       //[char] \n
-      if (it - begin >= 1 && *(it - 1) == '\r') { 
+      while (start != it && *start == ' ') ++start;
+      if (start != it && it - begin >= 1 && *(it - 1) == '\r') { 
         value = std::string(start, it - 1);
-      }else{  
+      } else {
         value = std::string(start, it);
       }
       _headers[key] = value;
       start = it + 1;
       is_key = true;
+      //[char] \r\n\r\n
+      //[char] \n\n
+      if (end - it >= 2 && it - begin >= 1 && *(it - 1) == '\r' && *(it + 1) == '\r' && *(it + 2) == '\n') { it += 3; break ; }
+      if (end - it >= 1 && *(it + 1) == '\n') { it += 2; break ; }
     } 
     ++it;
     if (it == end) _headers.clear();
   }
   _body.insert(_body.end(), it, end);
 
-  _headers["Content-Type"] = "text/html";
-  _headers["Connection"] = "keep-alive";
-  if (_headers.find("Location") != _headers.end()){
-    const std::string& location = _headers.find("Location")->second;
+  _is_session_block = false;
+  _is_logout_req = false;
+  if (_headers.find("user-name") != _headers.end()) {
+    std::map<std::string, std::string>::const_iterator  iter = _headers.find("user-name");
+    _session_block.setValue(iter->second);
+    _headers["set-cookie"] = "session_id=" + _session_block.getId() + ";";
+    _headers.erase(iter);
+    _is_session_block = true;
+  } else if (_headers.find("logout") != _headers.end()) {
+    std::map<std::string, std::string>::const_iterator  iter = _headers.find("logout");
+    _session_block.setId(iter->second);
+    _headers.erase(iter);
+    _is_logout_req = true;
+  }
+  if (_headers.find("Location") != _headers.end()) {
+    std::map<std::string, std::string>::const_iterator  iter = _headers.find("Location");
+    const std::string& location = iter->second;
     if (location[0] == '/'){
       _is_ready = false;
       throw LocalReDirException();
@@ -232,8 +250,8 @@ void                                      HttpResponse::initializeCgiProcess(
   _cgi_handler = CgiHandler(req, rule, server_name, port, client_fd);
 }
 
-int                                       HttpResponse::cgiExecute(void) throw(std::runtime_error) {
-  return _cgi_handler.execute();
+int                                       HttpResponse::cgiExecute(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) throw(std::runtime_error) {
+  return _cgi_handler.execute(sbi, is_joined_session);
 }
 
 void                                      HttpResponse::addContentLength(void) {
@@ -260,6 +278,9 @@ HPS::Method                               HttpResponse::getMethod(void) const { 
 const int&                                HttpResponse::getEntityIdx(void) const { return _entity_idx; };
 const int&                                HttpResponse::getHeaderIdx(void) const { return _header_idx; }
 const bool&                               HttpResponse::getIsHeaderSent(void) const { return _is_header_sent; }
+const SessionBlock&                       HttpResponse::getSessionBlock(void) const { return _session_block; }
+const bool&                               HttpResponse::getIsSessionBlock(void) const { return _is_session_block; }
+const bool&                               HttpResponse::getIsLogoutRequest(void) const { return _is_logout_req; }
 // Setters
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setEntityIdx(int entity_idx) { _entity_idx = entity_idx; }

@@ -37,6 +37,9 @@ class HttpRequest {
     const bool&                               getHeaderArrived(void) const;
     const bool&                               getEntityArrived(void) const;
     const std::string                         getHeaderValue(std::string h_field) const;
+    const std::string&                        getSessionId(void) const;
+
+    void                                      setSessionId(void);
 
     int                                       settingContent(std::vector<char>::const_iterator start, std::vector<char>::const_iterator end);
     void                                      setQueries(const std::string& queries);
@@ -114,6 +117,9 @@ class HttpRequest {
 
     bool                                _header_arrived;
     bool                                _entity_arrived;
+
+    //session
+    std::string                         _session_id;
 };
 
 #endif
