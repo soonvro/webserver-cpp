@@ -144,9 +144,8 @@ void                                      HttpResponse::publish(const HttpReques
     }
     addContentLength();
 }
-#include <iostream>
+
 void                                      HttpResponse::publishCgi(const std::vector<char>::const_iterator& begin, const std::vector<char>::const_iterator& end,  const RouteRule& rule, enum HPS::Method method) {
-  std::cout << "hello!" << std::endl;
   std::string key;
   std::string value;
 
@@ -155,7 +154,6 @@ void                                      HttpResponse::publishCgi(const std::ve
   _headers.clear();
   _headers["Content-Type"] = "text/html";
   _headers["Connection"] = "keep-alive";
-
 
   bool  is_key = true;
   while (it < end) {
