@@ -18,7 +18,9 @@ class SessionBlock {
     const std::string&  getValue(void) const;
     const long&         getExpires(void) const;
 
-    void                setValue(std::string& str);
+    void                setId(const std::string& id);
+
+    void                setValue(const std::string& str);
     void                renewExp(void);
 };
 

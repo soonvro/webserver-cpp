@@ -30,7 +30,7 @@ a { text-decoration: none; color: inherit; }
 END_HTML
 if ($username)
 {
-print "<p>hi ! $username<a id=\"set-name\" href=\"/login.html\">set name</a></p>";
+print "<p>hi ! $username<a id=\"set-name\" href=\"/logout.pl\">delete name</a></p>";
 }
 else
 {

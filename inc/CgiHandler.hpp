@@ -6,6 +6,7 @@
 
 #include "HttpRequest.hpp"
 #include "RouteRule.hpp"
+#include "SessionBlock.hpp"
 
 #define DEFAULT_CONTENT_TYPE "text/html"
 #define PIPE_READ  0
@@ -27,9 +28,9 @@ class CgiHandler {
 
     void                      setCgiReqEntityIdx(int idx);
     void                      setPipe(void) throw(std::runtime_error);
-    void                      setupCgiEnvp(const std::string& username);
+    void                      setupCgiEnvp(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session);
 
-    int                       execute(const std::string& username) throw(std::runtime_error);
+    int                       execute(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) throw(std::runtime_error);
 
     const int&                getClientFd(void) const;
     const std::vector<char>&  getBuf(void) const;

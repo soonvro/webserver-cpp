@@ -4,8 +4,7 @@ use HTML::Entities;
 $query = new CGI;
 $hostname = $ENV { 'SERVER_NAME' };
 
-$username = $query->param("username");
-$username = decode_entities($username);
+$sessionId = $ENV { 'session_id' };
 
-print "user-name: $username\n";
+print "logout: $sessionId\n";
 print "Location: http://$hostname/index.pl\n\n";

@@ -188,12 +188,12 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   if (responses.empty() || !responses.front().getIsReady()) changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
 }
 
-void  Server::setCgiSetting(HttpResponse& res, const std::string& username) {
+void  Server::setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
   _cgi_responses_on_pipe[res.getCgiPipeIn()] = &res;
   changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   changeEvents(_change_list, res.getCgiHandler().getWritePipetoCgi(),
               EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &(res.getCgiHandler()));
-  int cgi_pid = res.cgiExecute(username);
+  int cgi_pid = res.cgiExecute(sbi, is_joined_session);
   _cgi_responses_on_pid[cgi_pid] = &res;
   changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
   std::cout << "create cgi process, pid: " << cgi_pid  << ", pipe_fd: " << res.getCgiPipeIn() << std::endl;
@@ -234,7 +234,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
       const RouteRule *rule = findRouteRule(last_request, client_fd);
       cli.addRess(last_request, rule).backRess().publish(last_request, rule, _clients[client_fd]);
       if (cli.backRess().getIsCgi()) {
-        setCgiSetting(cli.backRess(), getSessionName(last_request.getSessionId()));
+        setCgiSetting(cli.backRess(), getSessionBlock(last_request.getSessionId()), isJoinedSession(last_request.getSessionId()));
       }
       printReq(last_request, cli.getBuf(), false);
       cli.eraseBuf();
@@ -271,7 +271,7 @@ void Server::recvHttpRequest(int client_fd, int64_t event_size) {
         const RouteRule *rule = findRouteRule(req, client_fd);
         cli.addRess(req, rule).backRess().publish(req, rule, _clients[client_fd]);
         if (cli.backRess().getIsCgi()) {
-          setCgiSetting(cli.backRess(), getSessionName(req.getSessionId()));
+          setCgiSetting(cli.backRess(), getSessionBlock(req.getSessionId()), isJoinedSession(req.getSessionId()));
         }
         cli.eraseBuf();
       }
@@ -340,19 +340,23 @@ void  Server::recvCgiResponse(int cgi_fd, int64_t event_size) {
 
   try{
     res.publishCgi(cgi_handler.getBuf().begin(), cgi_handler.getBuf().end(), cgi_handler.getRouteRule(), res.getMethod());
+
     if (res.getIsSessionBlock()) {
       const SessionBlock& sb = res.getSessionBlock();
       _session_blocks[sb.getId()] = sb;
+    } else if (res.getIsLogoutRequest() && isJoinedSession(res.getSessionBlock().getId())) {
+      _session_blocks.erase(res.getSessionBlock().getId());
     }
   } catch (HttpResponse::LocalReDirException e){//local redir
+    std::cout << "!!!!!!" << e.what() << std::endl;
     HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     Client& cli = _clients[cgi_handler.getClientFd()];
     req.setSessionId();
-    req.setQueries(""); 
+    req.setQueries("");
     req.setLocation(res.getHeader().find("Location")->second);
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), cli.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
-    setCgiSetting(cli.backRess(), getSessionName(req.getSessionId()));
+    setCgiSetting(cli.backRess(), getSessionBlock(req.getSessionId()), isJoinedSession(req.getSessionId()));
   }
   changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, NULL);
 }
@@ -489,11 +493,5 @@ void      Server::checkTimeout(void){
   }
 }
 
-const std::string  Server::getSessionName(const std::string& session_id) {
-  if (_session_blocks.find(session_id) != _session_blocks.end()) {
-    std::map<std::string, SessionBlock>::iterator it = _session_blocks.find(session_id);
-    SessionBlock& sb = it->second;
-    return sb.getValue();
-  }
-  return "";
-}
+bool                                                       Server::isJoinedSession(const std::string& session_id) { return _session_blocks.find(session_id) != _session_blocks.end(); }
+const std::map<std::string, SessionBlock>::const_iterator  Server::getSessionBlock(const std::string& session_id) { return _session_blocks.find(session_id); }

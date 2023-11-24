@@ -56,7 +56,7 @@ class Server {
 
   void              sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
   void              recvCgiResponse(int cgi_fd, int64_t event_size);
-  void              setCgiSetting(HttpResponse& res, const std::string& username); 
+  void              setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session); 
 
   const RouteRule*  findRouteRule(const HttpRequest& req, const int& client_fd);
 
@@ -70,7 +70,8 @@ class Server {
   void init(void);
   void run(void);
 
-  const std::string   getSessionName(const std::string& session_id);
+  bool                                                      isJoinedSession(const std::string& session_id);
+  const std::map<std::string, SessionBlock>::const_iterator getSessionBlock(const std::string& session_id);
 };
 
 #endif

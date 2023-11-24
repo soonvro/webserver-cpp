@@ -67,9 +67,9 @@ void CgiHandler::setPipe(void) throw(std::runtime_error) {
 
 }
 
-void CgiHandler::setupCgiEnvp(const std::string& username) {
-  static const char* methods[] = {GET, HEAD, POST, DELETE};
-  std::stringstream ss;
+void CgiHandler::setupCgiEnvp(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
+  static const char*      methods[] = {GET, HEAD, POST, DELETE};
+  std::stringstream       ss;
 
   setenv("SERVER_SOFTWARE", "webserv/1.0", 1);
   if (_req.getEntityArrived()) {
@@ -88,7 +88,12 @@ void CgiHandler::setupCgiEnvp(const std::string& username) {
   setenv("SCRIPT_NAME", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
   setenv("PATH_INFO", (_route_rule.getRoot() + _req.getLocation()).c_str(), 1);
 
-  if (username.size() > 0) setenv("username", username.c_str(), 1);
+  if (is_joined_session) {
+    const SessionBlock&     session_block = sbi->second;
+
+    setenv("session_id", session_block.getId().c_str(), 1);
+    setenv("username", session_block.getValue().c_str(), 1);
+  }
 
   char current_dir[512];
   getcwd(current_dir, 512);
@@ -103,7 +108,7 @@ void CgiHandler::setupCgiEnvp(const std::string& username) {
   if (!_req.getHeaderValue("x-secret-header-for-test").empty())
     setenv("HTTP_X_SECRET_HEADER_FOR_TEST", _req.getHeaderValue("x-secret-header-for-test").c_str(), 1);
 }
-int CgiHandler::execute(const std::string& username) throw(std::runtime_error) {
+int CgiHandler::execute(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) throw(std::runtime_error) {
   pid_t pid = fork();
   if (pid == -1) throw std::runtime_error("error: fork error!");
   if (pid == 0) {  // Child process
@@ -115,7 +120,7 @@ int CgiHandler::execute(const std::string& username) throw(std::runtime_error) {
       dup2(_pipe_to_cgi_fd[PIPE_READ], STDIN_FILENO);
       close(_pipe_to_cgi_fd[PIPE_READ]);
 
-      this->setupCgiEnvp(username);
+      this->setupCgiEnvp(sbi, is_joined_session);
       char* path        = strdup(_route_rule.getCgiPath().c_str());
       char* script_name = strdup((_route_rule.getRoot() + _req.getLocation()).c_str());
       char* argv[3] = {path, script_name, NULL};
