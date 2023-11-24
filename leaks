@@ -1,0 +1,5 @@
+while [ 1 -le 10 ]
+do
+	leaks Webserv;
+	sleep 0.1;
+done

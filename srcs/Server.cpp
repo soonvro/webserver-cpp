@@ -157,12 +157,14 @@ void Server::sendHttpResponse(int client_fd, int64_t event_size) {
   const char* buf;
   int         idx;
   int         write_size;
+  std::string headers;
   if (responses.front().getIsHeaderSent()){
     buf = &(responses.front().getBody())[0];
     idx = responses.front().getEntityIdx();
     write_size = (int)responses.front().getBody().size() - idx > event_size ? event_size : responses.front().getBody().size() - idx;
   } else {
-    buf = HttpEncoder::execute(responses.front()).c_str();
+    headers = HttpEncoder::execute(responses.front());
+    buf = headers.c_str();
     idx = responses.front().getHeaderIdx();
     write_size = (int)std::strlen(buf) - idx > event_size ? event_size : std::strlen(buf) - idx;
   }
