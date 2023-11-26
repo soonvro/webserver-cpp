@@ -24,11 +24,16 @@ class CgiHandler {
     int                       getCgiReqEntityIdx(void);
     const HttpRequest&        getRequest(void);
     const int&                getReadPipeFromCgi(void) const;
+    const bool&               getIsReadPipeFromCgiClosed(void) const;
     const int&                getWritePipetoCgi(void) const;
+    const bool&               getIsWritePipeToCgiClosed(void) const;
+    const int&                getPid(void) const;
 
     void                      setCgiReqEntityIdx(int idx);
     void                      setPipe(void) throw(std::runtime_error);
     void                      setupCgiEnvp(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session);
+    void                      setIsReadPipeFromCgiClosed(bool is_closed);
+    void                      setIsWritePipeToCgiClosed(bool is_closed);
 
     int                       execute(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) throw(std::runtime_error);
 
@@ -38,12 +43,15 @@ class CgiHandler {
 
     void                      addBuf(const char* buf, size_t size);
     void                      closeReadPipe(void);
+    void                      closeWritePipe(void);
 
   private:
     int                       _idx;
 
     int                       _pipe_to_cgi_fd[2];
+    bool                      _is_write_pipe_to_cgi_closed;
     int                       _pipe_from_cgi_fd[2];
+    bool                      _is_read_pipe_from_cgi_closed;
 
     const HttpRequest&        _req;
     const RouteRule&          _route_rule;
@@ -53,6 +61,7 @@ class CgiHandler {
 
     std::vector<char>         _buf;
     int                       _client_fd;
+    int                       _pid;
 };
 
 

@@ -22,6 +22,8 @@ class Client {
     int                               _port;
     time_t                            _last_request_time;
     time_t                            _timeout_interval;
+    bool                              _isTimeOut;
+    int                               _timeOutMessageIdx;
   public:
     Client();
     Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval);
@@ -37,9 +39,14 @@ class Client {
     const int&                          getPort(void) const;
     const time_t&                       getLastRequestTime() const;
     const time_t&                       getTimeoutInterval() const;
+    const bool&                         getIsTimeOut(void) const;
+    const int&                          getTimeOutMessageIdx(void) const;
 
     std::vector<char>::const_iterator   getReadIter(void);
     std::vector<char>::const_iterator   getEndIter(void);
+
+    HttpResponse&                       getResponseByCgiFd(int fd);
+    HttpResponse&                       getResponseByPid(int pid);
 
     HttpResponse&                       backRess(void);
 
@@ -63,6 +70,8 @@ class Client {
 
     void                                setLastRequestTime(const time_t& last_request_time);
     void                                setTimeoutInterval(const time_t& timeout_interval);
+    void                                setIsTimeOut(const bool& is_time_out);
+    void                                setTimeOutMessageIdx(const int& idx);
 };
 
 #endif

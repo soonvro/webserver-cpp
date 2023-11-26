@@ -52,6 +52,8 @@ class HttpResponse {
     bool                                      _is_logout_req;
     SessionBlock                              _session_block;
 
+    bool                                      _eof;
+
     void                                      readDir(const std::string& path);
 
   public:
@@ -79,11 +81,14 @@ class HttpResponse {
     const SessionBlock&                       getSessionBlock(void) const;
     const bool&                               getIsSessionBlock(void) const;
     const bool&                               getIsLogoutRequest(void) const;
+    const bool&                               getEof(void) const;
+    const CgiHandler&                         getCgiHandler(int cgi_fd) const;
 
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);
     void                                      setHeaderIdx(int header_idx);
     void                                      setIsHeaderSent(bool is_header_sent);
+    void                                      setEof(bool eof);
 
     void                                      addContentLength(void);
     bool                                      isDir(const std::string& location);
@@ -99,6 +104,8 @@ class HttpResponse {
     
     void                                      readFile(const std::string& path);
     void                                      deleteFile(const std::string& path);
+    
+    static std::string                        timeOutMessage();    
 
     class FileNotFoundException : public std::exception {
       public: 

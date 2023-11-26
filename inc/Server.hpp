@@ -11,10 +11,11 @@
 
 #include <exception>
 #include <iostream>
-#include <map>
 #include <stdexcept>
 #include <utility>
+#include <map>
 #include <vector>
+#include <set>
 
 #include "Client.hpp"
 #include "Host.hpp"
@@ -23,8 +24,8 @@
 
 #define BACKLOG 512
 #define EVENT_LIST_SIZE 512
-#define KEEPALIVETIMEOUT 60
-#define SESSIONTIMELIMIT 1
+#define KEEPALIVETIMEOUT 600
+#define SESSIONTIMELIMIT 1200
 
 class Server {
  private:
@@ -38,9 +39,9 @@ class Server {
   std::vector<struct kevent>                  _change_list;
   std::map<std::string, SessionBlock>         _session_blocks;
 
-  std::map<int, Client>                       _clients;  // <socket_fd, Client>
-  std::map<int, HttpResponse*>                _cgi_responses_on_pipe;  //<pipe_in_fd, pointer to response>
-  std::map<int, HttpResponse*>                _cgi_responses_on_pid;  //<pid, pointer to response>
+  std::set<Client>                            _clients;
+  std::set<Client*>                           _clients_address;
+
 
   void              setSocketOption(int socket_fd);
 
@@ -48,18 +49,18 @@ class Server {
                      int16_t filter, uint16_t flags, uint32_t fflags,
                      intptr_t data, void *udata);
 
-  void              handleErrorKevent(int ident);
-  void              disconnectClient(const int client_fd);
+  void              handleErrorKevent(int ident, void *udata);
+  void              disconnectClient(Client* client);
   void              connectClient(int server_socket);
 
-  void              sendHttpResponse(int client_fd, int64_t event_size);
-  void              recvHttpRequest(int client_fd, int64_t event_size);
+  void              sendHttpResponse(int client_fd, Client& client, int64_t event_size);
+  void              recvHttpRequest(int client_fd, Client& client, int64_t event_size);
 
-  void              sendCgiRequest(int cgi_fd, void* req, int64_t event_size);
-  void              recvCgiResponse(int cgi_fd, int64_t event_size);
-  void              setCgiSetting(HttpResponse& res, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session); 
+  void              sendCgiRequest(int cgi_fd, Client& client, int64_t event_size);
+  void              recvCgiResponse(int cgi_fd, Client& client, int64_t event_size);
+  void              setCgiSetting(HttpResponse& res, Client& client, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session); 
 
-  const RouteRule*  findRouteRule(const HttpRequest& req, const int& client_fd);
+  const RouteRule*  findRouteRule(const HttpRequest& req, const int& host_port);
 
   time_t            getTime(void);  //return seconds
   void              checkTimeout(void);

@@ -9,13 +9,15 @@
 #include "CgiHandler.hpp"
 
 
-CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) : _req(req), _route_rule(route_rule) {
+CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) 
+  : _req(req), _route_rule(route_rule), _is_read_pipe_from_cgi_closed(false), _is_write_pipe_to_cgi_closed(false) {
   _buf.reserve(CGI_HANDLER_BUF_SIZE);
 }
 
 CgiHandler::CgiHandler(
     const HttpRequest& req, const RouteRule& route_rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error)
-  : _idx(0), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) {
+  : _idx(0), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) 
+  , _is_read_pipe_from_cgi_closed(false), _is_write_pipe_to_cgi_closed(false){
   this->setPipe();
   _buf.reserve(CGI_HANDLER_BUF_SIZE);
 }
@@ -31,6 +33,8 @@ CgiHandler::CgiHandler(const CgiHandler& other)
   _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _client_fd = other._client_fd;
+  _is_read_pipe_from_cgi_closed = other._is_read_pipe_from_cgi_closed;
+  _is_write_pipe_to_cgi_closed = other._is_write_pipe_to_cgi_closed;
 }
 
 CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
@@ -46,6 +50,9 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   _buf.reserve(other._buf.capacity());
   _buf = other._buf;
   _client_fd = other._client_fd;
+  _is_read_pipe_from_cgi_closed = other._is_read_pipe_from_cgi_closed;
+  _is_write_pipe_to_cgi_closed = other._is_write_pipe_to_cgi_closed;
+
   return *this;
 }
 
@@ -133,6 +140,7 @@ int CgiHandler::execute(const std::map<std::string, SessionBlock>::const_iterato
       close(_pipe_from_cgi_fd[PIPE_WRITE]);
       close(_pipe_to_cgi_fd[PIPE_READ]);
   }
+  _pid = pid;
   return pid;
 }
 
@@ -141,4 +149,5 @@ const std::vector<char>&  CgiHandler::getBuf(void) const{ return _buf; }
 const RouteRule&          CgiHandler::getRouteRule(void) const { return _route_rule; };
 
 void  CgiHandler::addBuf(const char* buf, size_t size){ _buf.insert(_buf.end(), buf, buf + size); }
-void  CgiHandler::closeReadPipe(void){ close(_pipe_from_cgi_fd[PIPE_READ]); }
+void  CgiHandler::closeReadPipe(void){ close(_pipe_from_cgi_fd[PIPE_READ]); _is_read_pipe_from_cgi_closed = true; }
+void  CgiHandler::closeWritePipe(void){ close(_pipe_to_cgi_fd[PIPE_WRITE]); _is_write_pipe_to_cgi_closed = true; }
