@@ -7,7 +7,7 @@
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"
 
-#define DEBUGMOD 1
+#define DEBUGMOD 0
 #define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
@@ -430,7 +430,7 @@ void Server::init(void) {
                   0, NULL);
     it++;
   }
-  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 100000, NULL);
+  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
 }
 
 void Server::run(void) {
