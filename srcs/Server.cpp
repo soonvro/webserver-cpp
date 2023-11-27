@@ -496,8 +496,6 @@ void Server::run(void) {
         } else { // cgi write event
           sendCgiRequest(curr_event->ident, *(Client*)curr_event->udata, curr_event->data);
         }
-      } else {
-        std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Who you are??? XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
       }
     }
   }
