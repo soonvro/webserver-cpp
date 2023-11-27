@@ -82,7 +82,7 @@ class HttpResponse {
     const bool&                               getIsSessionBlock(void) const;
     const bool&                               getIsLogoutRequest(void) const;
     const bool&                               getEof(void) const;
-    const CgiHandler&                         getCgiHandler(int cgi_fd) const;
+    const CgiHandler&                         getCgiHandler(void) const;
 
     void                                      setIsCgi(bool is_cgi);
     void                                      setEntityIdx(int entity_idx);

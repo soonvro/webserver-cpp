@@ -1,12 +1,12 @@
 #include "Client.hpp"
 
-Client::Client() : _read_idx(0), _has_eof(false), _client_fd(-1), _port(-1), _isTimeOut(false), _timeOutMessageIdx(0) {
+Client::Client() : _read_idx(0), _has_eof(false), _client_fd(-1), _port(-1), _is_time_out(false), _time_out_message_idx(0) {
   _buf.reserve(CLIENT_BUF_SIZE);
 }
 
 Client::Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval) 
   : _read_idx(0), _has_eof(false), _client_fd(client_fd), _port(port), _last_request_time(last_request_time),
-   _timeout_interval(timeout_interval), _isTimeOut(false), _timeOutMessageIdx(0) {
+   _timeout_interval(timeout_interval), _is_time_out(false), _time_out_message_idx(0) {
   _buf.reserve(CLIENT_BUF_SIZE);
 }
 
@@ -23,8 +23,8 @@ Client& Client::operator=(const Client& other) {
   _port = other._port;
   _last_request_time = other._last_request_time;
   _timeout_interval = other._timeout_interval;
-  _isTimeOut = other._isTimeOut;
-  _timeOutMessageIdx = other._timeOutMessageIdx;
+  _is_time_out = other._is_time_out;
+  _time_out_message_idx = other._time_out_message_idx;
   return *this;
 }
 
@@ -37,9 +37,15 @@ std::queue<HttpResponse>&           Client::getRess(void) { return _ress; }
 const bool&                         Client::getEof(void) const { return _has_eof; }
 const time_t&                       Client::getLastRequestTime() const { return _last_request_time; }
 const time_t&                       Client::getTimeoutInterval() const { return _timeout_interval; }
+const bool&                         Client::getIsTimeOut(void) const { return _is_time_out; }
+const int&                          Client::getTimeOutMessageIdx(void) const { return _time_out_message_idx; }
 
-std::vector<char>::const_iterator Client::getReadIter(void) { return _buf.begin() + _read_idx; }
-std::vector<char>::const_iterator Client::getEndIter(void) { return _buf.end(); }
+std::vector<char>::const_iterator   Client::getReadIter(void) { return _buf.begin() + _read_idx; }
+std::vector<char>::const_iterator   Client::getEndIter(void) { return _buf.end(); }
+
+HttpResponse&                       Client::getResponseByCgiFd(int fd) { return *(_http_responses_by_fd.find(fd)->second); }
+HttpResponse&                       Client::getResponseByPid(int pid) { return *(_http_responses_by_pid.find(pid)->second); }
+
 HttpResponse&                       Client::backRess(void) { return _ress.back(); }
 
 HttpRequest&                        Client::backRequest(void) {
@@ -102,4 +108,16 @@ void Client::setLastRequestTime(const time_t& last_request_time) {
 
 void Client::setTimeoutInterval(const time_t& timeout_interval) {
   _timeout_interval = timeout_interval;
+}
+
+void                                Client::setIsTimeOut(const bool& is_time_out) { _is_time_out = is_time_out; _has_eof = true; }
+void                                Client::setTimeOutMessageIdx(const int& idx) { _time_out_message_idx = idx; }
+
+void                                Client::addResponseByFd(int fd, HttpResponse* res) { _http_responses_by_fd[fd]= res; }
+void                                Client::addResponseByPid(int pid, HttpResponse* res) { _http_responses_by_pid[pid] = res; }
+
+
+
+bool                                Client::operator<(const Client& other) const {
+  return this->getClientFd() < other.getClientFd();
 }

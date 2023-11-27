@@ -2,6 +2,7 @@
 #define CLIENT_HPP_
 
 #include <queue>
+#include <map>
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -22,8 +23,12 @@ class Client {
     int                               _port;
     time_t                            _last_request_time;
     time_t                            _timeout_interval;
-    bool                              _isTimeOut;
-    int                               _timeOutMessageIdx;
+    bool                              _is_time_out;
+    int                               _time_out_message_idx;
+
+    std::map<int, HttpResponse*>       _http_responses_by_fd;
+    std::map<int, HttpResponse*>       _http_responses_by_pid;
+
   public:
     Client();
     Client(int client_fd, int port, time_t last_request_time, time_t timeout_interval);
@@ -72,6 +77,11 @@ class Client {
     void                                setTimeoutInterval(const time_t& timeout_interval);
     void                                setIsTimeOut(const bool& is_time_out);
     void                                setTimeOutMessageIdx(const int& idx);
+
+    void                                addResponseByFd(int fd, HttpResponse* res);
+    void                                addResponseByPid(int fd, HttpResponse* res);
+
+    bool                                operator<(const Client& other) const;
 };
 
 #endif

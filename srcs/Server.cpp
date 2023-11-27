@@ -109,28 +109,27 @@ void Server::handleErrorKevent(int ident, void *udata) {
   }
 }
 
+
+/*
+ * void disconnectClient(Client* client)
+ * close socket, pipes
+ * erase set<Client> _clients, set<Client*> _clients_address
+ */
 void Server::disconnectClient(Client* client) {
   std::cout << "Client disconnected: " << client->getClientFd() << "... " << std::flush;
   close(client->getClientFd());
   std::queue<HttpResponse>& ress = client->getRess();
-  std::set<int> pids;
   while (!ress.empty()) {
     HttpResponse& res = ress.front();
     if (res.getIsCgi()){
       CgiHandler& cgi_handler = res.getCgiHandler();
       if (!cgi_handler.getIsWritePipeToCgiClosed()) close(cgi_handler.getWritePipetoCgi());
       if (!cgi_handler.getIsReadPipeFromCgiClosed()) close(cgi_handler.getReadPipeFromCgi()); 
-      pids.insert(cgi_handler.getPid());
     }
     ress.pop();
   }
   _clients.erase(*client);
   _clients_address.erase(client);
-  for (size_t i = 0; i < _change_list.size(); i++){
-    if (pids.count(_change_list[i].ident)){
-      _change_list[i].udata = NULL;
-    }
-  }
   std::cout << "Done." << std::endl;
 }
 
@@ -159,7 +158,10 @@ void Server::connectClient(int server_socket) {
                 0, 0, (void*)&(*it));
 }
 
-void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size) {
+void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size) { 
+  
+  // send 도중 timeout 걸리면 문제 발생 가능성 있음.
+  
   std::queue<HttpResponse>& responses = client.getRess();
   const char* buf;
   int         idx;
@@ -190,8 +192,8 @@ void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size)
     client.setTimeOutMessageIdx(idx);
     if (idx >= (int)std::strlen(buf)) {
       disconnectClient(&client);
-      return ;
     }
+    return ;
   } else if (responses.front().getIsHeaderSent()){
     responses.front().setEntityIdx(idx);
     if (idx != (int)responses.front().getBody().size()) return ;
@@ -210,15 +212,23 @@ void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size)
 }
 
 void  Server::setCgiSetting(HttpResponse& res, Client& client, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
-  changeEvents(_change_list, res.getCgiPipeIn(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &client);
-  changeEvents(_change_list, res.getCgiHandler().getWritePipetoCgi(),
-              EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &client);
+  int pipe_read_from_cgi = res.getCgiHandler().getReadPipeFromCgi();
+  int pipe_write_to_cgi = res.getCgiHandler().getWritePipetoCgi();
+      std::cout << "server!!!  write: "<< pipe_write_to_cgi << std::endl;
+      std::cout << "server!!  read: "<< pipe_read_from_cgi<< std::endl;
+
+  changeEvents(_change_list, pipe_read_from_cgi, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &client);
+  changeEvents(_change_list, pipe_write_to_cgi, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &client);
+  client.addResponseByFd(pipe_read_from_cgi, &res);
+  client.addResponseByFd(pipe_write_to_cgi, &res);
   int cgi_pid = res.cgiExecute(sbi, is_joined_session);
+  client.addResponseByPid(cgi_pid, &res);
   changeEvents(_change_list, cgi_pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, &client);
   std::cout << "create cgi process, pid: " << cgi_pid  << ", pipe_fd: " << res.getCgiPipeIn() << std::endl;
 }
 
 void Server::recvHttpRequest(int client_fd, Client& cli, int64_t event_size) {
+  if (cli.getEof()) return ;
   char    *buf = new char[event_size];
 
   int n = read(client_fd, buf, event_size);
@@ -229,7 +239,7 @@ void Server::recvHttpRequest(int client_fd, Client& cli, int64_t event_size) {
     if (cli.getRess().empty())cli.setEof(true);
     else cli.getRess().back().setEof(true);
   }
-  if ((n == 0 && cli.getBuf().empty()) || n < 0){
+  if (n < 0){
     disconnectClient(&cli);
     return ;
   }
@@ -245,7 +255,8 @@ void Server::recvHttpRequest(int client_fd, Client& cli, int64_t event_size) {
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(last_request, cli.getPort());
         cli.addRess(last_request, rule).backRess().publishError(411, rule, last_request.getMethod());
-        changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, &cli);
+        if (cli.getRess().front().getIsReady())
+          changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, &cli);
         cli.getRess().back().setEof(true);
         printReq(last_request, cli.getBuf(), true);
         return ;
@@ -288,7 +299,8 @@ void Server::recvHttpRequest(int client_fd, Client& cli, int64_t event_size) {
       } catch (HttpRequest::ChunkedException& e) {
         const RouteRule *rule = findRouteRule(req, cli.getPort());
         cli.addRess(req, rule).backRess().publishError(411, rule, req.getMethod());
-        changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, &cli);
+        if (cli.getRess().front().getIsReady())
+          changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, &cli);
         cli.getRess().back().setEof(true);
         return ;
       }
@@ -304,17 +316,20 @@ void Server::recvHttpRequest(int client_fd, Client& cli, int64_t event_size) {
     } else {
       const RouteRule *rule = findRouteRule(req, cli.getPort());
       cli.addRess(req, rule).backRess().publishError(400, rule, req.getMethod());
-        cli.getRess().back().setEof(true);
+      cli.getRess().back().setEof(true);
     }
   }
 
-  if (cli.getRess().size() && cli.getRess().front().getIsReady()) 
+  if (!cli.getRess().empty() && cli.getRess().front().getIsReady()) 
     changeEvents(_change_list, client_fd, EVFILT_WRITE, EV_ENABLE, 0, 0, &cli);
 }
 
 void  Server::sendCgiRequest(int cgi_fd, Client& client, int64_t event_size){
+  if (client.getEof()) return ;
   HttpResponse& res =  client.getResponseByCgiFd(cgi_fd);
+  if (res.getEof()) return ;
   CgiHandler& cgi_handler = res.getCgiHandler();
+
   int n = 0;
   int idx = cgi_handler.getCgiReqEntityIdx();
 
@@ -326,7 +341,8 @@ void  Server::sendCgiRequest(int cgi_fd, Client& client, int64_t event_size){
     cgi_handler.closeWritePipe();
     res.publishError(503, &cgi_handler.getRouteRule(), cgi_handler.getRequest().getMethod());
     res.setEof(true);
-    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
+    if (client.getRess().front().getIsReady())
+      changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
     return ;
   }
   idx += n;
@@ -339,9 +355,10 @@ void  Server::sendCgiRequest(int cgi_fd, Client& client, int64_t event_size){
 
 
 void  Server::recvCgiResponse(int cgi_fd, Client& client, int64_t event_size) {
+  if (client.getEof()) return ;
   char    *buf = new char[event_size];
-
   HttpResponse& res = client.getResponseByCgiFd(cgi_fd);
+  if (res.getEof()) return ;
   CgiHandler& cgi_handler = res.getCgiHandler();
 
   int n = read(cgi_fd, buf, event_size);
@@ -351,17 +368,13 @@ void  Server::recvCgiResponse(int cgi_fd, Client& client, int64_t event_size) {
     cgi_handler.closeReadPipe();
     res.publishError(503, &cgi_handler.getRouteRule(), res.getMethod());
     res.setEof(true);
-    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
+    if (client.getRess().front().getIsReady())
+      changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
     return ;
   }
-  // if (n == 0 && cgi_handler.getBuf().empty()) {
-  //   close(cgi_fd);
-  //   return;
-  // }
   if (n != 0)  return ;
 
   cgi_handler.closeReadPipe();
-
   try{
     res.publishCgi(cgi_handler.getBuf().begin(), cgi_handler.getBuf().end(), cgi_handler.getRouteRule(), res.getMethod());
 
@@ -372,7 +385,6 @@ void  Server::recvCgiResponse(int cgi_fd, Client& client, int64_t event_size) {
       _session_blocks.erase(res.getSessionBlock().getId());
     }
   } catch (HttpResponse::LocalReDirException e){//local redir
-    std::cout << "!!!!!!" << e.what() << std::endl;
     HttpRequest& req = const_cast<HttpRequest&> (cgi_handler.getRequest());
     req.setSessionId();
     req.setQueries("");
@@ -380,8 +392,11 @@ void  Server::recvCgiResponse(int cgi_fd, Client& client, int64_t event_size) {
     res.initializeCgiProcess(req, cgi_handler.getRouteRule(), req.getHost(), client.getPort(), cgi_handler.getClientFd());
     res.setIsCgi(true);
     setCgiSetting(client.backRess(), client, getSessionBlock(req.getSessionId()), isJoinedSession(req.getSessionId()));
+    if (!cgi_handler.getIsWritePipeToCgiClosed()) cgi_handler.closeWritePipe();
+    return ;
   }
-  changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
+  if (client.getRess().front().getIsReady())
+    changeEvents(_change_list, cgi_handler.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
 }
 
 void Server::init(void) {
@@ -417,7 +432,7 @@ void Server::init(void) {
                   0, NULL);
     it++;
   }
-  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 1000, NULL);
+  changeEvents(_change_list, 0, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, 100000, NULL);
 }
 
 void Server::run(void) {
@@ -443,13 +458,18 @@ void Server::run(void) {
         std::cout << "waitpid :" << curr_event->ident << " status: " << WEXITSTATUS(status) << std::endl;
         if (WEXITSTATUS(status) != 0 && _clients_address.count((Client*)curr_event->udata)) {
           Client& client = *(Client *)(curr_event->udata);
+          if (client.getEof()) continue ;
           HttpResponse& res = client.getResponseByPid(curr_event->ident);
+          if (res.getEof()) continue ;
           res.publishError(503, &(res.getCgiHandler().getRouteRule()), res.getMethod());
           res.setEof(true);
-          changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
+          if (client.getRess().front().getIsReady())
+            changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
         }
       // socket disconnect event
       } else if ((curr_event->flags & EV_EOF) && _clients_address.count((Client*)curr_event->udata)) {
+        Client* client = (Client*)curr_event->udata;
+        if (!client->getRess().empty()) continue ;
         if(DEBUG_DETAIL_KEVENT) std::cout << "+ Socket disconnect event" << std::endl;
         disconnectClient((Client*)curr_event->udata);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
@@ -458,7 +478,7 @@ void Server::run(void) {
         if (_server_sockets.count(curr_event->ident)) {  // socket read event
           connectClient(curr_event->ident);
         } else if (_clients_address.count((Client*)curr_event->udata) 
-                && ((Client*)curr_event->udata)->getClientFd() == curr_event->ident) {  // client read event
+                && ((Client*)curr_event->udata)->getClientFd() == (int)curr_event->ident) {  // client read event
           Client& client = *(Client*)curr_event->udata;
           client.setLastRequestTime(getTime());
           try{
@@ -467,14 +487,15 @@ void Server::run(void) {
             std::cout << e.what() << std::endl;
             HttpResponse& res = client.getRess().back();
             res.publishError(502, &(res.getCgiHandler().getRouteRule()), res.getMethod());
-            changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
+            if (client.getRess().front().getIsReady())
+              changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
             res.setEof(true);
           }
         } else if (_clients_address.count((Client*)curr_event->udata)) {  // cgi read event
           recvCgiResponse(curr_event->ident, *(Client*)curr_event->udata, curr_event->data);
         }
       } else if (curr_event->filter == EVFILT_WRITE && _clients_address.count((Client*)curr_event->udata)) {  //write event
-        if (((Client*)curr_event->udata)->getClientFd() == curr_event->ident){ // client write event
+        if (((Client*)curr_event->udata)->getClientFd() == (int)curr_event->ident){ // client write event
           sendHttpResponse(curr_event->ident, *(Client*)curr_event->udata, curr_event->data);
         } else { // cgi write event
           sendCgiRequest(curr_event->ident, *(Client*)curr_event->udata, curr_event->data);
@@ -507,8 +528,9 @@ void      Server::checkTimeout(void){
   for (; it != _clients.end(); ++it) {
     if (getTime() - it->getLastRequestTime() > it->getTimeoutInterval()) {
       //timeout
-      it->setIsTimeOut(true);
-      changeEvents(_change_list, it->getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &((Client)*it));
+      Client& client = const_cast<Client&>(*it);
+      client.setIsTimeOut(true);
+      changeEvents(_change_list, client.getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &(client));
     }
   }
 

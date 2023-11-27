@@ -281,8 +281,18 @@ const bool&                               HttpResponse::getIsHeaderSent(void) co
 const SessionBlock&                       HttpResponse::getSessionBlock(void) const { return _session_block; }
 const bool&                               HttpResponse::getIsSessionBlock(void) const { return _is_session_block; }
 const bool&                               HttpResponse::getIsLogoutRequest(void) const { return _is_logout_req; }
+const bool&                               HttpResponse::getEof(void) const { return _eof; }
+const CgiHandler&                         HttpResponse::getCgiHandler(void) const { return _cgi_handler; }
+
 // Setters
 void                                      HttpResponse::setIsCgi(bool is_cgi) { _is_cgi = is_cgi; }
 void                                      HttpResponse::setEntityIdx(int entity_idx) { _entity_idx = entity_idx; }
 void                                      HttpResponse::setHeaderIdx(int header_idx) { _header_idx = header_idx; }
 void                                      HttpResponse::setIsHeaderSent(bool is_header_sent) { _is_header_sent = is_header_sent; }
+void                                      HttpResponse::setEof(bool eof) { _eof = eof; }
+
+std::string                        HttpResponse::timeOutMessage() {
+  std::string message = "HTTP/1.1 408 Request Timeout\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n";
+  return message;  
+}
+    

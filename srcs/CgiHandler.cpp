@@ -8,16 +8,15 @@
 
 #include "CgiHandler.hpp"
 
-
 CgiHandler::CgiHandler(const HttpRequest& req, const RouteRule& route_rule) 
-  : _req(req), _route_rule(route_rule), _is_read_pipe_from_cgi_closed(false), _is_write_pipe_to_cgi_closed(false) {
+  : _is_write_pipe_to_cgi_closed(true), _is_read_pipe_from_cgi_closed(true), _req(req), _route_rule(route_rule) {
   _buf.reserve(CGI_HANDLER_BUF_SIZE);
 }
 
 CgiHandler::CgiHandler(
     const HttpRequest& req, const RouteRule& route_rule, const std::string& server_name, const int& port, const int& client_fd) throw(std::runtime_error)
-  : _idx(0), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) 
-  , _is_read_pipe_from_cgi_closed(false), _is_write_pipe_to_cgi_closed(false){
+  : _idx(0), _is_write_pipe_to_cgi_closed(true), _is_read_pipe_from_cgi_closed(true), _req(req), _route_rule(route_rule), _server_name(server_name), _port(port), _client_fd(client_fd) 
+ {
   this->setPipe();
   _buf.reserve(CGI_HANDLER_BUF_SIZE);
 }
@@ -56,21 +55,30 @@ CgiHandler& CgiHandler::operator=(const CgiHandler& other) {
   return *this;
 }
 
-int CgiHandler::getCgiReqEntityIdx(void) { return _idx; }
-const HttpRequest& CgiHandler::getRequest(void) { return _req; }
-const int& CgiHandler::getReadPipeFromCgi(void) const { return _pipe_from_cgi_fd[PIPE_READ]; }
-const int& CgiHandler::getWritePipetoCgi(void) const { return _pipe_to_cgi_fd[PIPE_WRITE]; }
+int                       CgiHandler::getCgiReqEntityIdx(void) { return _idx; }
+const HttpRequest&        CgiHandler::getRequest(void) { return _req; }
+const int&                CgiHandler::getReadPipeFromCgi(void) const { return _pipe_from_cgi_fd[PIPE_READ]; }
+const bool&               CgiHandler::getIsReadPipeFromCgiClosed(void) const { return _is_read_pipe_from_cgi_closed; }
+
+const int&                CgiHandler::getWritePipetoCgi(void) const { return _pipe_to_cgi_fd[PIPE_WRITE]; }
+const bool&               CgiHandler::getIsWritePipeToCgiClosed(void) const { return _is_write_pipe_to_cgi_closed; }
+const int&                CgiHandler::getPid(void) const { return _pid; }
 
 void CgiHandler::setCgiReqEntityIdx(int idx) { _idx = idx; }
 void CgiHandler::setPipe(void) throw(std::runtime_error) {
   if (pipe(_pipe_from_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
   fcntl(_pipe_from_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
   fcntl(_pipe_from_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
-
+  _is_read_pipe_from_cgi_closed =false;
 
   if (pipe(_pipe_to_cgi_fd) != 0) throw std::runtime_error("error: can't open pipe");
   fcntl(_pipe_to_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
   fcntl(_pipe_to_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
+  _is_write_pipe_to_cgi_closed = false;
+  std::cout << "set pipe from read :" << _pipe_from_cgi_fd[PIPE_READ] << std::endl;
+  std::cout << "set pipe from write :"<< _pipe_from_cgi_fd[PIPE_WRITE] << std::endl;
+  std::cout << "set pipe to read :"<< _pipe_to_cgi_fd[PIPE_READ] << std::endl;
+  std::cout << "set pipe to write :"<< _pipe_to_cgi_fd[PIPE_WRITE] << std::endl;
 
 }
 
@@ -120,10 +128,15 @@ int CgiHandler::execute(const std::map<std::string, SessionBlock>::const_iterato
   if (pid == -1) throw std::runtime_error("error: fork error!");
   if (pid == 0) {  // Child process
       close(_pipe_from_cgi_fd[PIPE_READ]);
+      std::cout << "child!!!  write: "<< _pipe_from_cgi_fd[PIPE_WRITE] << std::endl;
+      std::cout << "child!!!  can be read : "<< _pipe_from_cgi_fd[PIPE_READ] << std::endl;
+      std::cout << "child!!!  read: "<< _pipe_to_cgi_fd[PIPE_READ] << std::endl;
+      std::cout << "child!!!  can be write : "<< _pipe_to_cgi_fd[PIPE_WRITE] << std::endl;
       dup2(_pipe_from_cgi_fd[PIPE_WRITE], STDOUT_FILENO);
       close(_pipe_from_cgi_fd[PIPE_WRITE]);
 
       close(_pipe_to_cgi_fd[PIPE_WRITE]);
+  
       dup2(_pipe_to_cgi_fd[PIPE_READ], STDIN_FILENO);
       close(_pipe_to_cgi_fd[PIPE_READ]);
 
@@ -143,6 +156,9 @@ int CgiHandler::execute(const std::map<std::string, SessionBlock>::const_iterato
   _pid = pid;
   return pid;
 }
+
+void                      CgiHandler::setIsReadPipeFromCgiClosed(bool is_closed) { _is_read_pipe_from_cgi_closed = is_closed; }
+void                      CgiHandler::setIsWritePipeToCgiClosed(bool is_closed) { _is_write_pipe_to_cgi_closed = is_closed; }
 
 const int&                CgiHandler::getClientFd(void) const{ return _client_fd; }
 const std::vector<char>&  CgiHandler::getBuf(void) const{ return _buf; }
