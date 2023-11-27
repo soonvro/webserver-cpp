@@ -8,7 +8,7 @@
 #include "HttpEncoder.hpp"
 
 #define DEBUGMOD 1
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
@@ -37,8 +37,8 @@ void  printReq(const HttpRequest& req, const std::vector<char>& data, bool force
   }
   std::map<std::string, std::string>::const_iterator i = req.getHeaders().begin();
   std::cout << ">>>> REQUEST MESSAGE >>>>\n";
-  const char* methods[] = {"GET", "HEAD", "POST", "DELETE"};
-  std::cout << methods[req.getMethod() - 1] << ' ' <<
+  const char* methods[] = {"Not Method", "GET", "HEAD", "POST", "DELETE"};
+  std::cout << methods[req.getMethod()] << ' ' <<
                req.getLocation() <<
                (req.getQueries().empty() ? "" : "?" + req.getQueries()) <<
                " HTTP/1.1" <<std::endl;
