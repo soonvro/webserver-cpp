@@ -128,10 +128,6 @@ int CgiHandler::execute(const std::map<std::string, SessionBlock>::const_iterato
   if (pid == -1) throw std::runtime_error("error: fork error!");
   if (pid == 0) {  // Child process
       close(_pipe_from_cgi_fd[PIPE_READ]);
-      std::cout << "child!!!  write: "<< _pipe_from_cgi_fd[PIPE_WRITE] << std::endl;
-      std::cout << "child!!!  can be read : "<< _pipe_from_cgi_fd[PIPE_READ] << std::endl;
-      std::cout << "child!!!  read: "<< _pipe_to_cgi_fd[PIPE_READ] << std::endl;
-      std::cout << "child!!!  can be write : "<< _pipe_to_cgi_fd[PIPE_WRITE] << std::endl;
       dup2(_pipe_from_cgi_fd[PIPE_WRITE], STDOUT_FILENO);
       close(_pipe_from_cgi_fd[PIPE_WRITE]);
 

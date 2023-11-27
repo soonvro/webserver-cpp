@@ -221,6 +221,7 @@ void                                      HttpResponse::publishCgi(const std::ve
 
 void                                      HttpResponse::publishError(int status, const RouteRule* rule, enum HPS::Method method){
   _status = status;
+  _is_ready = true;
   if (!rule || !rule->hasErrorPage(status)){
     std::stringstream ss;
     ss << _status;
@@ -231,7 +232,6 @@ void                                      HttpResponse::publishError(int status,
     _headers["Content-Type"] = "text/html";
     if (status != 408)  _headers["Connection"] = "keep-alive";
     else _headers["Connection"] = "close";
-    _is_ready = true;
     addContentLength();
     return ;
   }

@@ -7,8 +7,8 @@
 #include "ConfigReader.hpp"
 #include "HttpEncoder.hpp"
 
-#define DEBUGMOD 0
-#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 1)
+#define DEBUGMOD 1
+#define DEBUG_DETAIL_RAWDATA (DEBUGMOD & 0)
 #define DEBUG_DETAIL_KEVENT  (DEBUGMOD & 1)
 
 void printKeventLog(const int& new_event, const int& i, const struct kevent* curr_event) {
@@ -167,6 +167,7 @@ void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size)
   int         idx;
   int         write_size;
   std::string message;
+  if (!client.getIsTimeOut() && (responses.empty() || !responses.front().getIsReady())) return ;
   if (client.getIsTimeOut()) {
     message = HttpResponse::timeOutMessage();
     buf = message.c_str();
@@ -214,9 +215,6 @@ void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size)
 void  Server::setCgiSetting(HttpResponse& res, Client& client, const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
   int pipe_read_from_cgi = res.getCgiHandler().getReadPipeFromCgi();
   int pipe_write_to_cgi = res.getCgiHandler().getWritePipetoCgi();
-      std::cout << "server!!!  write: "<< pipe_write_to_cgi << std::endl;
-      std::cout << "server!!  read: "<< pipe_read_from_cgi<< std::endl;
-
   changeEvents(_change_list, pipe_read_from_cgi, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &client);
   changeEvents(_change_list, pipe_write_to_cgi, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &client);
   client.addResponseByFd(pipe_read_from_cgi, &res);
@@ -466,10 +464,8 @@ void Server::run(void) {
           if (client.getRess().front().getIsReady())
             changeEvents(_change_list, res.getCgiHandler().getClientFd(), EVFILT_WRITE, EV_ENABLE, 0, 0, &client);
         }
-      // socket disconnect event
-      } else if ((curr_event->flags & EV_EOF) && _clients_address.count((Client*)curr_event->udata)) {
-        Client* client = (Client*)curr_event->udata;
-        if (!client->getRess().empty()) continue ;
+      } else if ((curr_event->flags & EV_EOF) && _clients_address.count((Client*)curr_event->udata) 
+                && ((Client*)curr_event->udata)->getClientFd() == (int)curr_event->ident) {
         if(DEBUG_DETAIL_KEVENT) std::cout << "+ Socket disconnect event" << std::endl;
         disconnectClient((Client*)curr_event->udata);
       } else if (curr_event->filter == EVFILT_TIMER) {  // timer event
