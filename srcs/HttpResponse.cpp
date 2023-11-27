@@ -92,12 +92,12 @@ void                                      HttpResponse::publish(const HttpReques
       publishError(404, 0, _method);
       return ;
     }
-    if (rule->getIsCgi()){
-      //cgi set
-      initializeCgiProcess(req, *rule, req.getHost(), client.getPort(), client.getClientFd());
-      _is_cgi = true;
-      return ;
-    }
+    // if (rule->getIsCgi()){
+    //   //cgi set
+    //   initializeCgiProcess(req, *rule, req.getHost(), client.getPort(), client.getClientFd());
+    //   _is_cgi = true;
+    //   return ;
+    // }
     const std::string  suffix_of_location(location.substr(rule->getRoute().size(), location.size() - rule->getRoute().size()));
     _headers["Content-Type"] = "text/html";
     _headers["Connection"] = "keep-alive";
@@ -114,6 +114,12 @@ void                                      HttpResponse::publish(const HttpReques
             _headers["Location"] = rule->getRedirection().second;
           }
           addContentLength();
+          return ;
+        } else if (rule->getIsCgi()){
+          //cgi set
+          initializeCgiProcess(req, *rule, req.getHost(), client.getPort(), client.getClientFd());
+          _is_cgi = true;
+          _is_ready = false;
           return ;
         } else if (isDir(rule->getRoot() + suffix_of_location)) {
             _status = 200;
