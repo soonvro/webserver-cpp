@@ -159,9 +159,6 @@ void Server::connectClient(int server_socket) {
 }
 
 void Server::sendHttpResponse(int client_fd, Client& client, int64_t event_size) { 
-  
-  // send 도중 timeout 걸리면 문제 발생 가능성 있음.
-  
   std::queue<HttpResponse>& responses = client.getRess();
   const char* buf;
   int         idx;

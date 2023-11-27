@@ -75,11 +75,6 @@ void CgiHandler::setPipe(void) throw(std::runtime_error) {
   fcntl(_pipe_to_cgi_fd[PIPE_READ], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
   fcntl(_pipe_to_cgi_fd[PIPE_WRITE], F_SETFL, O_NONBLOCK, FD_CLOEXEC);
   _is_write_pipe_to_cgi_closed = false;
-  std::cout << "set pipe from read :" << _pipe_from_cgi_fd[PIPE_READ] << std::endl;
-  std::cout << "set pipe from write :"<< _pipe_from_cgi_fd[PIPE_WRITE] << std::endl;
-  std::cout << "set pipe to read :"<< _pipe_to_cgi_fd[PIPE_READ] << std::endl;
-  std::cout << "set pipe to write :"<< _pipe_to_cgi_fd[PIPE_WRITE] << std::endl;
-
 }
 
 void CgiHandler::setupCgiEnvp(const std::map<std::string, SessionBlock>::const_iterator& sbi, bool is_joined_session) {
