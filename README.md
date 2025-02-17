@@ -1,2 +1,11 @@
-# Webserv
-42 Seoul - 5circle - Webserv
+# Webserver C++
+
+이 프로젝트는 C++로 구현된 간단한 웹 서버입니다. GET, POST, DELETE 요청, 여러 클라이언트 처리, 정적 파일 제공과 같은 기본적인 HTTP/1.1 기능을 지원합니다.
+
+# 기능
+- 기본 HTTP/1.1 지원
+- HTTP 파서
+- 여러 클라이언트 처리
+- 정적 파일 제공
+- CGI 지원
+- 설정 파일 파싱
