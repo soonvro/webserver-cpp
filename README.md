@@ -47,7 +47,6 @@
     <li><a href="#webserver-cpp를-만든-이유">Webserver Cpp를 만든 이유</a></li>
     <li><a href="#기술-스택">기술 스택</a></li>
     <li><a href="#라이선스">라이선스</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ul>
 </details>
 
@@ -252,13 +251,6 @@ Language:
 Unlicense를 준수합니다. 자세한 내용은 `LICENSE`에서 확인할 수 있습니다.
 
 <p align="right"><a href="#readme-top">▲ back to top</a></p>
-
-
-# Acknowledgments
-[nginx](https://nginx.org/)  
-
-<p align="right"><a href="#readme-top">▲ back to top</a></p>
-
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
