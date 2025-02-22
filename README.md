@@ -80,25 +80,21 @@
 # 빠른 시작
 
 ### 요구 사항
+- mac OS
 - C++ compiler with C++98 support
 - Make
 - Python3 (for CGI support)
 - Perl (for CGI support)
 
 ### 설치 및 실행
-
-1. Clone the repository
 ```sh
+# 1. Clone the repository
 git clone https://github.com/soonvro/webserver-cpp.git
-```
 
-2. Build the project
-```sh
-make
-```
+# 2. Build the project
+cd webserver-cpp && make
 
-3. Run the server
-```sh
+# 3. Run the server
 ./webserv [config_file]
 ```
 
