@@ -89,7 +89,7 @@
 
 1. Clone the repository
 ```sh
-git clone https://github.com/soonvro/webserver_cpp.git
+git clone https://github.com/soonvro/webserver-cpp.git
 ```
 
 2. Build the project
