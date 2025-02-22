@@ -270,7 +270,7 @@ Unlicense를 준수합니다. 자세한 내용은 `LICENSE`에서 확인할 수 
 [stars-url]: https://github.com/soonvro/webserver-cpp/stargazers
 [issues-shield]: https://img.shields.io/github/issues/soonvro/webserver-cpp.svg?style=for-the-badge
 [issues-url]: https://github.com/soonvro/webserver-cpp/issues
-[license-shield]: https://img.shields.io/github/license/soonvro/webserver-cpp.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/soonvro/webserver-cpp?label=license&style=for-the-badge
 [license-url]: https://github.com/soonvro/webserver-cpp/blob/master/LICENSE
 
 [cpp-badge]: https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white
