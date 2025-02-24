@@ -223,7 +223,7 @@ ps aux | grep webserv
 <p align="right"><a href="#readme-top">▲ back to top</a></p>
 
 
-# Webserver Cpp를 만든 이유
+# 왜 Webserver Cpp를 만들었나요?
 
 단순히 웹 서버를 사용하는 것을 넘어, C++로 웹 서버를 직접 구현하여 동작 방식을 이해하기 위해 시작한 프로젝트입니다. 덕분에 평소에 블랙박스처럼 추상적이었던 웹 서버의 내부 구조를 명확히 이해하고, 필요하다면 분석 및 수정까지 가능한 대상이라고 인식을 바꿀 수 있었습니다.  
 
