@@ -95,7 +95,7 @@ git clone https://github.com/soonvro/webserver-cpp.git
 cd webserver-cpp && make
 
 # 3. Run the server
-./webserv [config_file]
+./Webserv [config_file]
 ```
 
 설정 파일을 명시하지 않으면, 기본 설정 파일인 `webserv.config`이 적용됩니다.  
