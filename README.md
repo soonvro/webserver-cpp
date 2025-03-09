@@ -54,9 +54,8 @@
 # 주요 기능
 
 - **RFC 규격 준수 HTTP Parser**:
-    - 자체 구현한 유한 상태 오토마타 Parser
+    - 자체 구현한 **유한 상태 오토마타** Parser
     - HTTP/1.1 규격 지원
-    - **Zero-Copy Parsing**
 - **이벤트 기반 I/O 멀티플렉싱**:
     - 효율적인 이벤트 관리를 위한 kqueue 사용
     - 논블로킹 I/O 작업
